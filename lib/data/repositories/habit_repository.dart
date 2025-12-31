@@ -1,5 +1,3 @@
-
-
 // ============================================
 // FICHIER 17/30 : lib/data/repositories/habit_repository.dart
 // ============================================
@@ -117,6 +115,11 @@ class HabitRepository {
     await habit.save();
   }
   
+  /// Save a single habit (for sync/restore)
+  Future<void> saveHabit(HabitModel habit) async {
+    await _box.put(habit.id, habit);
+  }
+  
   /// Complete habit for today
   Future<void> completeHabit(String id) async {
     final habit = getHabitById(id);
@@ -165,6 +168,11 @@ class HabitRepository {
     if (habit != null) {
       habit.restore();
     }
+  }
+  
+  /// Clear all habits (for restore operation)
+  Future<void> clearAll() async {
+    await _box.clear();
   }
   
   // ========== ANALYTICS ==========

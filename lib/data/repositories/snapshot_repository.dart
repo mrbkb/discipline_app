@@ -48,6 +48,11 @@ class SnapshotRepository {
     return snapshot;
   }
   
+  /// Save a single snapshot (for sync/restore)
+  Future<void> saveSnapshot(DailySnapshotModel snapshot) async {
+    await _box.put(snapshot.date, snapshot);
+  }
+  
   // ========== READ ==========
   
   /// Get snapshot by date

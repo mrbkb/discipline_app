@@ -1,5 +1,3 @@
-
-
 // ============================================
 // FICHIER 10/30 : lib/core/services/notification_service.dart
 // ============================================
@@ -109,8 +107,6 @@ class NotificationService {
         iOS: DarwinNotificationDetails(),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
@@ -189,4 +185,3 @@ class NotificationService {
     await _notifications.cancelAll();
   }
 }
-

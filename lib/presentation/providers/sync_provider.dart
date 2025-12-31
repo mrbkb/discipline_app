@@ -154,6 +154,9 @@ class SyncNotifier extends StateNotifier<SyncState> {
       await _snapshotRepo.clearAllSnapshots();
       
       // Restore user
+
+
+      
       if (data['user'] != null) {
         await _userRepo.saveUser(data['user']);
       }

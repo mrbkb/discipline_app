@@ -1,5 +1,3 @@
-
-
 // ============================================
 // FICHIER 11/30 : lib/core/services/analytics_service.dart
 // ============================================
@@ -12,7 +10,21 @@ class AnalyticsService {
     await _analytics.setAnalyticsCollectionEnabled(true);
   }
   
-  // Onboarding
+  // ========== GENERIC EVENT LOGGING ==========
+  
+  /// Log a generic event with optional parameters
+  static Future<void> logEvent({
+    required String name,
+    Map<String, Object>? parameters,
+  }) async {
+    await _analytics.logEvent(
+      name: name,
+      parameters: parameters,
+    );
+  }
+  
+  // ========== ONBOARDING ==========
+  
   static Future<void> logOnboardingCompleted({
     required String nickname,
     required int habitsCount,
@@ -26,7 +38,8 @@ class AnalyticsService {
     );
   }
   
-  // Habit Actions
+  // ========== HABIT ACTIONS ==========
+  
   static Future<void> logHabitValidated({
     required String habitId,
     required String habitTitle,
@@ -74,7 +87,8 @@ class AnalyticsService {
     );
   }
   
-  // Notifications
+  // ========== NOTIFICATIONS ==========
+  
   static Future<void> logNotificationOpened({
     required String notifType,
     required int missedDays,
@@ -88,7 +102,8 @@ class AnalyticsService {
     );
   }
   
-  // Settings
+  // ========== SETTINGS ==========
+  
   static Future<void> logHardModeToggled(bool enabled) async {
     await _analytics.logEvent(
       name: 'hard_mode_toggled',
@@ -96,12 +111,14 @@ class AnalyticsService {
     );
   }
   
-  // Screens
+  // ========== SCREENS ==========
+  
   static Future<void> logScreenView(String screenName) async {
     await _analytics.logScreenView(screenName: screenName);
   }
   
-  // User Properties
+  // ========== USER PROPERTIES ==========
+  
   static Future<void> setUserProperties({
     required bool isHardMode,
     required int totalHabits,
@@ -118,6 +135,59 @@ class AnalyticsService {
     await _analytics.setUserProperty(
       name: 'avg_streak',
       value: avgStreak.toString(),
+    );
+  }
+  
+  // ========== CUSTOM EVENTS ==========
+  
+  /// Log when user creates a new habit
+  static Future<void> logHabitCreated({
+    required String habitTitle,
+    bool hasEmoji = false,
+  }) async {
+    await _analytics.logEvent(
+      name: 'habit_created',
+      parameters: {
+        'habit_title': habitTitle,
+        'has_emoji': hasEmoji,
+      },
+    );
+  }
+  
+  /// Log when user archives a habit
+  static Future<void> logHabitArchived(String habitId) async {
+    await _analytics.logEvent(
+      name: 'habit_archived',
+      parameters: {'habit_id': habitId},
+    );
+  }
+  
+  /// Log when user deletes a habit
+  static Future<void> logHabitDeleted(String habitId) async {
+    await _analytics.logEvent(
+      name: 'habit_deleted',
+      parameters: {'habit_id': habitId},
+    );
+  }
+  
+  /// Log app launch
+  static Future<void> logAppOpen() async {
+    await _analytics.logAppOpen();
+  }
+  
+  /// Log when user performs backup
+  static Future<void> logBackupPerformed() async {
+    await _analytics.logEvent(
+      name: 'backup_performed',
+      parameters: {'timestamp': DateTime.now().millisecondsSinceEpoch},
+    );
+  }
+  
+  /// Log when user restores data
+  static Future<void> logRestorePerformed() async {
+    await _analytics.logEvent(
+      name: 'restore_performed',
+      parameters: {'timestamp': DateTime.now().millisecondsSinceEpoch},
     );
   }
 }

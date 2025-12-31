@@ -2,7 +2,7 @@
 // FICHIER 24/30 : lib/presentation/providers/stats_provider.dart
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
+
 import '../../data/models/daily_snapshot_model.dart';
 import '../../data/models/habit_model.dart';
 import '../../data/repositories/snapshot_repository.dart';

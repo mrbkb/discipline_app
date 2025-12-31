@@ -3,7 +3,7 @@
 // FICHIER 21/30 : lib/presentation/providers/habits_provider.dart
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
+
 import '../../data/models/habit_model.dart';
 import '../../data/repositories/habit_repository.dart';
 import '../../core/services/analytics_service.dart';

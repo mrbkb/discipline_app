@@ -5,7 +5,6 @@
 import 'package:discipline/presentation/providers/stats_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import '../../data/repositories/firebase_repository.dart';
 import '../../data/repositories/habit_repository.dart';
 import '../../data/repositories/user_repository.dart';
@@ -156,7 +155,7 @@ class SyncNotifier extends StateNotifier<SyncState> {
       // Restore user
 
 
-      
+
       if (data['user'] != null) {
         await _userRepo.saveUser(data['user']);
       }

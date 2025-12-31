@@ -3,7 +3,6 @@
 // FICHIER 23/30 : lib/presentation/providers/user_provider.dart
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../core/services/firebase_service.dart';

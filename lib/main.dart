@@ -1,6 +1,7 @@
 // ============================================
 // FICHIER 1/30 : lib/main.dart
 // ============================================
+import 'package:discipline/firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +21,7 @@ void main() async {
   ]);
   
   // Initialize Firebase
-  await Firebase.initializeApp();
+  await Firebase.initializeApp( options: DefaultFirebaseOptions.currentPlatform);
   
   // Initialize Hive
   await StorageService.init();

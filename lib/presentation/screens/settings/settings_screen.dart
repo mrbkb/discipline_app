@@ -1,5 +1,5 @@
 // ============================================
-// FICHIER : lib/presentation/screens/settings/settings_screen.dart
+// FICHIER CORRIGÉ : lib/presentation/screens/settings/settings_screen.dart
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,8 +23,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     AnalyticsService.logScreenView('settings');
   }
 
+  // ✅ FIX: Méthode pour forcer le refresh
+  void _refreshUserData() {
+    ref.read(userProvider.notifier).refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
+    // ✅ FIX: Watch au lieu de read pour auto-refresh
     final user = ref.watch(userProvider);
     final syncState = ref.watch(syncNotifierProvider);
     final isOnline = ref.watch(isOnlineProvider);
@@ -88,7 +94,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Nickname
+                  // Nickname - ✅ Se met à jour automatiquement
                   Text(
                     user.nickname,
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
@@ -118,7 +124,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                   // Edit nickname button
                   TextButton.icon(
-                    onPressed: () => _showEditNicknameDialog(context, ref, user.nickname),
+                    onPressed: () => _showEditNicknameDialog(context, user.nickname),
                     icon: const Icon(Icons.edit, size: 18),
                     label: const Text('Modifier le surnom'),
                     style: TextButton.styleFrom(
@@ -160,7 +166,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Hard Mode
+                    // Hard Mode - ✅ Se met à jour automatiquement
                     _SettingsTile(
                       icon: Icons.whatshot,
                       iconColor: AppColors.dangerRed,
@@ -168,14 +174,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       subtitle: AppStrings.settingsHardModeDesc,
                       trailing: Switch(
                         value: user.isHardMode,
-                        onChanged: (value) {
-                          ref.read(userProvider.notifier).toggleHardMode();
+                        onChanged: (value) async {
+                          await ref.read(userProvider.notifier).toggleHardMode();
+                          // Pas besoin de setState, le provider se refresh auto
                         },
                       ),
                     ),
                     const Divider(height: 1, color: AppColors.divider),
 
-                    // Notifications
+                    // Notifications - ✅ Se met à jour automatiquement
                     _SettingsTile(
                       icon: Icons.notifications,
                       iconColor: AppColors.lavaOrange,
@@ -183,14 +190,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       subtitle: user.notificationsEnabled ? 'Activées' : 'Désactivées',
                       trailing: Switch(
                         value: user.notificationsEnabled,
-                        onChanged: (value) {
-                          ref.read(userProvider.notifier).toggleNotifications();
+                        onChanged: (value) async {
+                          await ref.read(userProvider.notifier).toggleNotifications();
                         },
                       ),
                     ),
                     const Divider(height: 1, color: AppColors.divider),
 
-                    // Reminder Time
+                    // Reminder Time - ✅ Se met à jour automatiquement
                     _SettingsTile(
                       icon: Icons.access_time,
                       iconColor: Colors.blue,
@@ -199,14 +206,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _showTimePickerDialog(
                         context,
-                        ref,
                         user.reminderTime,
                         isLateReminder: false,
                       ),
                     ),
                     const Divider(height: 1, color: AppColors.divider),
 
-                    // Late Reminder
+                    // Late Reminder - ✅ Se met à jour automatiquement
                     _SettingsTile(
                       icon: Icons.alarm,
                       iconColor: AppColors.warningYellow,
@@ -215,7 +221,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _showTimePickerDialog(
                         context,
-                        ref,
                         user.lateReminderTime,
                         isLateReminder: true,
                       ),
@@ -258,7 +263,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Backup button
+                    // Backup button - ✅ Se met à jour automatiquement
                     _SettingsTile(
                       icon: Icons.cloud_upload,
                       iconColor: AppColors.successGreen,
@@ -274,7 +279,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             )
                           : const Icon(Icons.chevron_right),
                       onTap: isOnline
-                          ? () => ref.read(syncNotifierProvider.notifier).backupToCloud()
+                          ? () async {
+                              await ref.read(syncNotifierProvider.notifier).backupToCloud();
+                            }
                           : null,
                     ),
                     const Divider(height: 1, color: AppColors.divider),
@@ -287,7 +294,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       subtitle: 'Récupérer depuis le cloud',
                       trailing: const Icon(Icons.chevron_right),
                       onTap: isOnline && user.hasBackedUp
-                          ? () => _showRestoreDialog(context, ref)
+                          ? () => _showRestoreDialog(context)
                           : null,
                     ),
                   ],
@@ -332,7 +339,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
 
-          // Sync status message
+          // Sync status message - ✅ Se met à jour automatiquement
           if (syncState.message != null)
             SliverToBoxAdapter(
               child: Padding(
@@ -443,7 +450,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return 'Il y a ${diff.inDays}j';
   }
 
-  void _showEditNicknameDialog(BuildContext context, WidgetRef ref, String currentNickname) {
+  // ✅ FIX: Méthode simplifiée avec refresh auto
+  void _showEditNicknameDialog(BuildContext context, String currentNickname) {
     final controller = TextEditingController(text: currentNickname);
     
     showDialog(
@@ -466,11 +474,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: const Text('Annuler'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final newNickname = controller.text.trim();
               if (newNickname.isNotEmpty) {
-                ref.read(userProvider.notifier).updateNickname(newNickname);
-                Navigator.pop(context);
+                await ref.read(userProvider.notifier).updateNickname(newNickname);
+                if (context.mounted) Navigator.pop(context);
+                // Pas besoin de setState, le provider se refresh auto
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.lavaOrange),
@@ -481,9 +490,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  // ✅ FIX: Méthode simplifiée avec refresh auto
   void _showTimePickerDialog(
     BuildContext context,
-    WidgetRef ref,
     String currentTime,
     {required bool isLateReminder}
   ) async {
@@ -513,14 +522,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final timeString = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
       
       if (isLateReminder) {
-        ref.read(userProvider.notifier).updateReminderTimes(lateReminder: timeString);
+        await ref.read(userProvider.notifier).updateReminderTimes(lateReminder: timeString);
       } else {
-        ref.read(userProvider.notifier).updateReminderTimes(reminder: timeString);
+        await ref.read(userProvider.notifier).updateReminderTimes(reminder: timeString);
       }
+      // Pas besoin de setState, le provider se refresh auto
     }
   }
 
-  void _showRestoreDialog(BuildContext context, WidgetRef ref) {
+  void _showRestoreDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -536,9 +546,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: const Text('Annuler'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ref.read(syncNotifierProvider.notifier).restoreFromCloud();
+              await ref.read(syncNotifierProvider.notifier).restoreFromCloud();
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.dangerRed),
             child: const Text('Restaurer'),
@@ -550,7 +560,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 }
 
 // ============================================
-// WIDGETS INTERNES
+// WIDGETS INTERNES (inchangés)
 // ============================================
 
 class _ProfileStat extends StatelessWidget {

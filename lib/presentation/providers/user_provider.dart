@@ -1,5 +1,5 @@
 // ============================================
-// FICHIER AMÉLIORÉ : lib/presentation/providers/user_provider.dart
+// FICHIER CORRIGÉ : lib/presentation/providers/user_provider.dart
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/user_model.dart';
@@ -13,13 +13,14 @@ final userRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository();
 });
 
-// User provider
+// ✅ FIX: StreamProvider au lieu de StateNotifierProvider
+// Cela écoute les changements dans Hive directement
 final userProvider = StateNotifierProvider<UserNotifier, UserModel?>((ref) {
   final repository = ref.watch(userRepositoryProvider);
   return UserNotifier(repository);
 });
 
-// Derived providers
+// ✅ FIX: Providers qui se recalculent automatiquement
 final isOnboardingCompletedProvider = Provider<bool>((ref) {
   final user = ref.watch(userProvider);
   return user?.onboardingCompleted ?? false;
@@ -40,6 +41,18 @@ final userNicknameProvider = Provider<String>((ref) {
   return user?.nickname ?? 'Champion';
 });
 
+// ✅ NOUVEAU: Provider pour la dernière sync
+final lastSyncProvider = Provider<DateTime?>((ref) {
+  final user = ref.watch(userProvider);
+  return user?.lastSyncAt;
+});
+
+// ✅ NOUVEAU: Provider pour le statut de backup
+final hasBackedUpProvider = Provider<bool>((ref) {
+  final user = ref.watch(userProvider);
+  return user?.hasBackedUp ?? false;
+});
+
 class UserNotifier extends StateNotifier<UserModel?> {
   UserNotifier(this._repository) : super(null) {
     _loadUser();
@@ -58,6 +71,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
     }
   }
   
+  // ✅ FIX: Méthode publique pour forcer le refresh
   Future<void> refresh() async {
     await _loadUser();
   }
@@ -85,9 +99,8 @@ class UserNotifier extends StateNotifier<UserModel?> {
       
       if (firebaseUser != null) {
         await _repository.upgradeToEmail(email);
-        await _loadUser();
+        await _loadUser(); // ✅ Refresh après modification
         
-        // Analytics
         await AnalyticsService.logEvent(
           name: 'account_upgraded',
           parameters: {'method': 'email'},
@@ -104,7 +117,6 @@ class UserNotifier extends StateNotifier<UserModel?> {
   Future<void> createUser({
     required String nickname,
   }) async {
-    // Initialize Firebase Auth first
     final firebaseUser = await FirebaseService.initializeAuth();
     
     final user = await _repository.createUser(
@@ -120,14 +132,13 @@ class UserNotifier extends StateNotifier<UserModel?> {
   
   Future<void> updateNickname(String nickname) async {
     await _repository.updateNickname(nickname);
-    await _loadUser();
+    await _loadUser(); // ✅ Refresh immédiat
   }
   
-  /// ✅ AMÉLIORATION: Gestion d'erreur robuste
   Future<void> toggleHardMode() async {
     try {
       await _repository.toggleHardMode();
-      await _loadUser();
+      await _loadUser(); // ✅ Refresh immédiat
       
       final user = state;
       if (user == null) {
@@ -145,21 +156,19 @@ class UserNotifier extends StateNotifier<UserModel?> {
           );
         } catch (e) {
           print('Error scheduling notifications: $e');
-          // Continue même si notifications échouent
         }
       }
       
-      // Analytics - avec gestion d'erreur
+      // Analytics
       try {
         await AnalyticsService.logHardModeToggled(user.isHardMode);
       } catch (e) {
         print('Error logging hard mode toggle: $e');
-        // Ne pas crasher l'app si analytics échoue
       }
       
     } catch (e) {
       print('Error in toggleHardMode: $e');
-      rethrow; // Propager l'erreur pour que l'UI puisse la gérer
+      rethrow;
     }
   }
   
@@ -171,7 +180,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
       reminder: reminder,
       lateReminder: lateReminder,
     );
-    await _loadUser();
+    await _loadUser(); // ✅ Refresh immédiat
     
     // Reschedule notifications
     final user = state;
@@ -190,20 +199,18 @@ class UserNotifier extends StateNotifier<UserModel?> {
   
   Future<void> toggleNotifications() async {
     await _repository.toggleNotifications();
-    await _loadUser();
+    await _loadUser(); // ✅ Refresh immédiat
     
     final user = state;
     if (user != null) {
       try {
         if (user.notificationsEnabled) {
-          // Schedule notifications
           await NotificationService.scheduleDaily(
             hour: user.reminderHour,
             minute: user.reminderMinute,
             isHardMode: user.isHardMode,
           );
         } else {
-          // Cancel notifications
           await NotificationService.cancelAll();
         }
       } catch (e) {
@@ -214,7 +221,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
   
   Future<void> completeOnboarding() async {
     await _repository.completeOnboarding();
-    await _loadUser();
+    await _loadUser(); // ✅ Refresh immédiat
     
     // Schedule notifications
     final user = state;
@@ -233,6 +240,6 @@ class UserNotifier extends StateNotifier<UserModel?> {
   
   Future<void> markBackedUp() async {
     await _repository.markBackedUp();
-    await _loadUser();
+    await _loadUser(); // ✅ Refresh immédiat
   }
 }

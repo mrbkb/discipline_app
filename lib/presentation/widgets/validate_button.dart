@@ -103,7 +103,7 @@ class _ValidateButtonState extends ConsumerState<ValidateButton> {
               backgroundColor: allCompleted
                   ? AppColors.successGreen
                   : AppColors.lavaOrange,
-              disabledBackgroundColor: AppColors.successGreen.withOpacity(0.5),
+              disabledBackgroundColor: AppColors.successGreen.withValues(alpha:0.5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),

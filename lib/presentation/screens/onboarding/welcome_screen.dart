@@ -79,10 +79,10 @@ class WelcomeScreen extends ConsumerWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.lavaOrange.withOpacity(0.1),
+                  color: AppColors.lavaOrange.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: AppColors.lavaOrange.withOpacity(0.3),
+                    color: AppColors.lavaOrange.withValues(alpha:.3),
                     width: 1,
                   ),
                 ),
@@ -120,18 +120,18 @@ class WelcomeScreen extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         AppStrings.onboardingButton,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward, size: 24),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward, size: 24),
                     ],
                   ),
                 ),

@@ -1,6 +1,5 @@
-
 // ============================================
-// FICHIER 32/35 : lib/presentation/widgets/habit_card.dart
+// FICHIER CORRIGÉ : lib/presentation/widgets/habit_card.dart
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +26,9 @@ class _HabitCardState extends ConsumerState<HabitCard>
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   bool _isAnimating = false;
+  
+  // ✅ FIX: Tracker pour éviter les problèmes après dispose
+  bool _isDisposed = false;
 
   @override
   void initState() {
@@ -42,24 +44,42 @@ class _HabitCardState extends ConsumerState<HabitCard>
 
   @override
   void dispose() {
+    _isDisposed = true;
     _controller.dispose();
     super.dispose();
   }
 
   Future<void> _toggleCompletion() async {
-    if (_isAnimating) return;
+    if (_isAnimating || _isDisposed) return;
     
     setState(() => _isAnimating = true);
     
-    await _controller.forward();
-    Vibration.vibrate(duration: 50);
-    
-    await ref.read(habitsProvider.notifier).toggleHabitCompletion(widget.habit.id);
-    
-    await _controller.reverse();
-    
-    if (mounted) {
-      setState(() => _isAnimating = false);
+    try {
+      await _controller.forward();
+      
+      // ✅ FIX: Vérification vibration disponible
+      if (await Vibration.hasVibrator()) {
+        await Vibration.vibrate(duration: 50);
+      }
+      
+      await ref.read(habitsProvider.notifier).toggleHabitCompletion(widget.habit.id);
+      
+      await _controller.reverse();
+    } catch (e) {
+      print('Error toggling habit: $e');
+      // ✅ FIX: Afficher erreur à l'utilisateur
+      if (mounted && !_isDisposed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: AppColors.dangerRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted && !_isDisposed) {
+        setState(() => _isAnimating = false);
+      }
     }
   }
 
@@ -86,7 +106,10 @@ class _HabitCardState extends ConsumerState<HabitCard>
           ),
         ),
         confirmDismiss: (direction) async {
-          return await showDialog(
+          // ✅ FIX: Vérifier si le widget est toujours monté
+          if (!mounted) return false;
+          
+          return await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
               backgroundColor: AppColors.cardBackground,
@@ -94,7 +117,7 @@ class _HabitCardState extends ConsumerState<HabitCard>
                 borderRadius: BorderRadius.circular(20),
               ),
               title: const Text('Archiver cette habitude ?'),
-              content: Text(
+              content: const Text(
                 'Tu pourras la restaurer plus tard depuis les paramètres.',
                 style: TextStyle(color: AppColors.textSecondary),
               ),
@@ -112,23 +135,30 @@ class _HabitCardState extends ConsumerState<HabitCard>
                 ),
               ],
             ),
-          );
+          ) ?? false; // ✅ FIX: Default à false si dialog fermé
         },
-        onDismissed: (direction) {
-          ref.read(habitsProvider.notifier).archiveHabit(widget.habit.id);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${widget.habit.title} archivée'),
-              backgroundColor: AppColors.dangerRed,
-              action: SnackBarAction(
-                label: 'Annuler',
-                textColor: Colors.white,
-                onPressed: () {
-                  // TODO: Implement undo
-                },
-              ),
-            ),
-          );
+        onDismissed: (direction) async {
+          try {
+            await ref.read(habitsProvider.notifier).archiveHabit(widget.habit.id);
+            
+            if (mounted && !_isDisposed) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${widget.habit.title} archivée'),
+                  backgroundColor: AppColors.dangerRed,
+                  action: SnackBarAction(
+                    label: 'Annuler',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      // TODO: Implement undo
+                    },
+                  ),
+                ),
+              );
+            }
+          } catch (e) {
+            print('Error archiving habit: $e');
+          }
         },
         child: InkWell(
           onTap: _toggleCompletion,
@@ -137,7 +167,7 @@ class _HabitCardState extends ConsumerState<HabitCard>
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: isCompleted
-                  ? AppColors.successGreen.withOpacity(0.1)
+                  ? AppColors.successGreen.withValues(alpha: 0.1)
                   : AppColors.cardBackground,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
@@ -185,6 +215,8 @@ class _HabitCardState extends ConsumerState<HabitCard>
                               ? TextDecoration.lineThrough
                               : null,
                         ),
+                        maxLines: 2, // ✅ FIX: Éviter débordement
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -209,7 +241,7 @@ class _HabitCardState extends ConsumerState<HabitCard>
                           ),
                           const SizedBox(width: 12),
                           if (widget.habit.bestStreak > 0) ...[
-                            Icon(
+                            const Icon(
                               Icons.emoji_events,
                               size: 16,
                               color: AppColors.warningYellow,
@@ -217,7 +249,7 @@ class _HabitCardState extends ConsumerState<HabitCard>
                             const SizedBox(width: 4),
                             Text(
                               '${widget.habit.bestStreak}',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 14,
                                 color: AppColors.warningYellow,
                                 fontWeight: FontWeight.w600,

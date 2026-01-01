@@ -1,5 +1,5 @@
 // ============================================
-// FICHIER 11/30 : lib/core/services/analytics_service.dart
+// FICHIER CORRIGÉ : lib/core/services/analytics_service.dart
 // ============================================
 import 'package:firebase_analytics/firebase_analytics.dart';
 
@@ -53,7 +53,7 @@ class AnalyticsService {
         'habit_title': habitTitle,
         'current_streak': currentStreak,
         'hour': hour,
-        'is_late': hour > 22,
+        'is_late': hour > 22 ? 1 : 0, 
       },
     );
   }
@@ -68,7 +68,7 @@ class AnalyticsService {
       parameters: {
         'habit_id': habitId,
         'lost_streak': lostStreak,
-        'was_best_streak': wasBestStreak,
+        'was_best_streak': wasBestStreak ? 1 : 0,
       },
     );
   }
@@ -104,10 +104,13 @@ class AnalyticsService {
   
   // ========== SETTINGS ==========
   
+  /// ✅ FIX CRITIQUE: Convertir boolean en string
   static Future<void> logHardModeToggled(bool enabled) async {
     await _analytics.logEvent(
       name: 'hard_mode_toggled',
-      parameters: {'enabled': enabled},
+      parameters: {
+        'enabled': enabled ? 'true' : 'false', // ✅ STRING au lieu de BOOLEAN
+      },
     );
   }
   
@@ -119,22 +122,24 @@ class AnalyticsService {
   
   // ========== USER PROPERTIES ==========
   
+  /// ✅ FIX CRITIQUE: Tous les user properties doivent être STRING
   static Future<void> setUserProperties({
     required bool isHardMode,
     required int totalHabits,
     required int avgStreak,
   }) async {
+    // ✅ Convertir TOUT en string
     await _analytics.setUserProperty(
       name: 'hard_mode',
-      value: isHardMode.toString(),
+      value: isHardMode ? 'true' : 'false', // ✅ STRING
     );
     await _analytics.setUserProperty(
       name: 'total_habits',
-      value: totalHabits.toString(),
+      value: totalHabits.toString(), // ✅ STRING
     );
     await _analytics.setUserProperty(
       name: 'avg_streak',
-      value: avgStreak.toString(),
+      value: avgStreak.toString(), // ✅ STRING
     );
   }
   
@@ -149,7 +154,7 @@ class AnalyticsService {
       name: 'habit_created',
       parameters: {
         'habit_title': habitTitle,
-        'has_emoji': hasEmoji,
+        'has_emoji': hasEmoji ? 1 : 0,
       },
     );
   }

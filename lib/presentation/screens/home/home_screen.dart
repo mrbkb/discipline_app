@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vibration/vibration.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_strings.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../providers/habits_provider.dart';
 import '../../providers/flame_provider.dart';
@@ -49,7 +48,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           color: AppColors.cardBackground,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: .2),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
@@ -111,7 +110,7 @@ class _NavItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.lavaOrange.withOpacity(0.15)
+              ? AppColors.lavaOrange.withValues(alpha: 0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
@@ -127,7 +126,7 @@ class _NavItem extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.lavaOrange,
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
@@ -314,93 +313,137 @@ class _HomeContent extends ConsumerWidget {
     );
   }
 
-  void _showAddHabitDialog(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController();
-    String selectedEmoji = '✨';
-    
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          backgroundColor: AppColors.cardBackground,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+ void _showAddHabitDialog(BuildContext context, WidgetRef ref) {
+  final controller = TextEditingController();
+  String selectedEmoji = '✨';
+
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => Dialog(
+        backgroundColor: AppColors.cardBackground,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
           ),
-          title: const Text('Nouvelle habitude'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Emoji selector
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: ['✨', '💪', '📚', '🧘', '💧', '🎯'].map((emoji) {
-                  return InkWell(
-                    onTap: () {
-                      setState(() => selectedEmoji = emoji);
-                      Vibration.vibrate(duration: 30);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: selectedEmoji == emoji
-                            ? AppColors.lavaOrange.withOpacity(0.2)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: selectedEmoji == emoji
-                              ? AppColors.lavaOrange
-                              : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                      child: Text(emoji, style: const TextStyle(fontSize: 28)),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              
-              // Title input
-              TextField(
-                controller: controller,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Nom de l\'habitude',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 🏷 Title
+                const Text(
+                  'Nouvelle habitude',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                textCapitalization: TextCapitalization.sentences,
-              ),
-            ],
+
+                const SizedBox(height: 20),
+
+                // 😃 Emoji selector (ANTI OVERFLOW)
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  alignment: WrapAlignment.center,
+                  children: ['✨', '💪', '📚', '🧘', '💧', '🎯'].map((emoji) {
+                    return InkWell(
+                      onTap: () {
+                        setState(() => selectedEmoji = emoji);
+                        Vibration.vibrate(duration: 30);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: selectedEmoji == emoji
+                              ? AppColors.lavaOrange.withValues(alpha: 0.2)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: selectedEmoji == emoji
+                                ? AppColors.lavaOrange
+                                : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        child: Text(
+                          emoji,
+                          style: const TextStyle(fontSize: 28),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 20),
+
+                // ✏️ Title input
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Nom de l\'habitude',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+
+                const SizedBox(height: 24),
+
+                // 🎯 Actions
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Annuler'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final title = controller.text.trim();
+                          if (title.isNotEmpty) {
+                            await ref
+                                .read(habitsProvider.notifier)
+                                .createHabit(
+                                  title: title,
+                                  emoji: selectedEmoji,
+                                );
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.lavaOrange,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Créer'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final title = controller.text.trim();
-                if (title.isNotEmpty) {
-                  await ref.read(habitsProvider.notifier).createHabit(
-                    title: title,
-                    emoji: selectedEmoji,
-                  );
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.lavaOrange,
-              ),
-              child: const Text('Créer'),
-            ),
-          ],
         ),
       ),
-    );
-  }
+    ),
+  );
 }
-
+}

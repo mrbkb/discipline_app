@@ -38,10 +38,10 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
       child: CustomScrollView(
         slivers: [
           // App Bar
-          SliverAppBar(
+          const SliverAppBar(
             floating: true,
             backgroundColor: AppColors.midnightBlack,
-            title: const Text(AppStrings.statsTitle),
+            title: Text(AppStrings.statsTitle),
             centerTitle: false,
           ),
 
@@ -73,7 +73,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: _getCompletionColor(weeklyCompletionPercentage / 100)
-                              .withOpacity(0.2),
+                              .withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -116,7 +116,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                                       colors: [
                                         _getCompletionColor(snapshot.completionRate),
                                         _getCompletionColor(snapshot.completionRate)
-                                            .withOpacity(0.7),
+                                            .withValues(alpha: 0.7),
                                       ],
                                     ),
                                     borderRadius: BorderRadius.circular(8),
@@ -155,24 +155,24 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                   const SizedBox(height: 16),
 
                   // Legend
-                  Row(
+                  const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _LegendItem(
                         color: AppColors.successGreen,
                         label: 'Parfait',
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       _LegendItem(
                         color: AppColors.lavaOrange,
                         label: 'Bon',
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       _LegendItem(
                         color: AppColors.warningYellow,
                         label: 'Moyen',
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       _LegendItem(
                         color: AppColors.dangerRed,
                         label: 'Faible',
@@ -361,7 +361,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.warningYellow.withOpacity(0.2),
+                              color: AppColors.warningYellow.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(

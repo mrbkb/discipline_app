@@ -1,6 +1,5 @@
-
 // ============================================
-// FICHIER 23/30 : lib/presentation/providers/user_provider.dart
+// FICHIER AMÉLIORÉ : lib/presentation/providers/user_provider.dart
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/user_model.dart';
@@ -124,22 +123,44 @@ class UserNotifier extends StateNotifier<UserModel?> {
     await _loadUser();
   }
   
+  /// ✅ AMÉLIORATION: Gestion d'erreur robuste
   Future<void> toggleHardMode() async {
-    await _repository.toggleHardMode();
-    await _loadUser();
-    
-    // Update notifications
-    final user = state;
-    if (user != null && user.notificationsEnabled) {
-      await NotificationService.scheduleDaily(
-        hour: user.reminderHour,
-        minute: user.reminderMinute,
-        isHardMode: user.isHardMode,
-      );
+    try {
+      await _repository.toggleHardMode();
+      await _loadUser();
+      
+      final user = state;
+      if (user == null) {
+        print('Warning: User is null after toggleHardMode');
+        return;
+      }
+      
+      // Update notifications
+      if (user.notificationsEnabled) {
+        try {
+          await NotificationService.scheduleDaily(
+            hour: user.reminderHour,
+            minute: user.reminderMinute,
+            isHardMode: user.isHardMode,
+          );
+        } catch (e) {
+          print('Error scheduling notifications: $e');
+          // Continue même si notifications échouent
+        }
+      }
+      
+      // Analytics - avec gestion d'erreur
+      try {
+        await AnalyticsService.logHardModeToggled(user.isHardMode);
+      } catch (e) {
+        print('Error logging hard mode toggle: $e');
+        // Ne pas crasher l'app si analytics échoue
+      }
+      
+    } catch (e) {
+      print('Error in toggleHardMode: $e');
+      rethrow; // Propager l'erreur pour que l'UI puisse la gérer
     }
-    
-    // Analytics
-    await AnalyticsService.logHardModeToggled(user?.isHardMode ?? false);
   }
   
   Future<void> updateReminderTimes({
@@ -155,11 +176,15 @@ class UserNotifier extends StateNotifier<UserModel?> {
     // Reschedule notifications
     final user = state;
     if (user != null && user.notificationsEnabled) {
-      await NotificationService.scheduleDaily(
-        hour: user.reminderHour,
-        minute: user.reminderMinute,
-        isHardMode: user.isHardMode,
-      );
+      try {
+        await NotificationService.scheduleDaily(
+          hour: user.reminderHour,
+          minute: user.reminderMinute,
+          isHardMode: user.isHardMode,
+        );
+      } catch (e) {
+        print('Error rescheduling notifications: $e');
+      }
     }
   }
   
@@ -169,16 +194,20 @@ class UserNotifier extends StateNotifier<UserModel?> {
     
     final user = state;
     if (user != null) {
-      if (user.notificationsEnabled) {
-        // Schedule notifications
-        await NotificationService.scheduleDaily(
-          hour: user.reminderHour,
-          minute: user.reminderMinute,
-          isHardMode: user.isHardMode,
-        );
-      } else {
-        // Cancel notifications
-        await NotificationService.cancelAll();
+      try {
+        if (user.notificationsEnabled) {
+          // Schedule notifications
+          await NotificationService.scheduleDaily(
+            hour: user.reminderHour,
+            minute: user.reminderMinute,
+            isHardMode: user.isHardMode,
+          );
+        } else {
+          // Cancel notifications
+          await NotificationService.cancelAll();
+        }
+      } catch (e) {
+        print('Error toggling notifications: $e');
       }
     }
   }
@@ -190,11 +219,15 @@ class UserNotifier extends StateNotifier<UserModel?> {
     // Schedule notifications
     final user = state;
     if (user != null && user.notificationsEnabled) {
-      await NotificationService.scheduleDaily(
-        hour: user.reminderHour,
-        minute: user.reminderMinute,
-        isHardMode: user.isHardMode,
-      );
+      try {
+        await NotificationService.scheduleDaily(
+          hour: user.reminderHour,
+          minute: user.reminderMinute,
+          isHardMode: user.isHardMode,
+        );
+      } catch (e) {
+        print('Error scheduling initial notifications: $e');
+      }
     }
   }
   

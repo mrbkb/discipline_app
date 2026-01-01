@@ -37,10 +37,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: CustomScrollView(
         slivers: [
           // App Bar
-          SliverAppBar(
+          const SliverAppBar(
             floating: true,
             backgroundColor: AppColors.midnightBlack,
-            title: const Text(AppStrings.settingsTitle),
+            title: Text(AppStrings.settingsTitle),
             centerTitle: false,
           ),
 
@@ -52,7 +52,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.lavaOrange.withOpacity(0.2),
+                    AppColors.lavaOrange.withValues(alpha:0.2),
                     AppColors.cardBackground,
                   ],
                   begin: Alignment.topLeft,
@@ -60,7 +60,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: AppColors.lavaOrange.withOpacity(0.3),
+                  color: AppColors.lavaOrange.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -71,7 +71,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: AppColors.lavaOrange.withOpacity(0.2),
+                      color: AppColors.lavaOrange.withValues(alpha:0.2),
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: AppColors.lavaOrange,
@@ -304,19 +304,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.warningYellow.withOpacity(0.1),
+                    color: AppColors.warningYellow.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppColors.warningYellow.withOpacity(0.3),
+                      color: AppColors.warningYellow.withValues(alpha: 0.3),
                     ),
                   ),
-                  child: Row(
+                  child: const Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.wifi_off,
                         color: AppColors.warningYellow,
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Hors ligne - La sauvegarde nécessite une connexion',
@@ -341,8 +341,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: syncState.status == SyncStatus.success
-                        ? AppColors.successGreen.withOpacity(0.1)
-                        : AppColors.dangerRed.withOpacity(0.1),
+                        ? AppColors.successGreen.withValues(alpha:0.1)
+                        : AppColors.dangerRed.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -402,22 +402,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   color: AppColors.cardBackground,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Column(
+                child: const Column(
                   children: [
                     _SettingsTile(
                       icon: Icons.info,
                       iconColor: Colors.blue,
                       title: 'Version',
                       subtitle: '1.0.0 (MVP)',
-                      trailing: const SizedBox.shrink(),
+                      trailing: SizedBox.shrink(),
                     ),
-                    const Divider(height: 1, color: AppColors.divider),
+                    Divider(height: 1, color: AppColors.divider),
                     _SettingsTile(
                       icon: Icons.code,
                       iconColor: AppColors.lavaOrange,
                       title: 'Développé par',
                       subtitle: 'Mr. BKB',
-                      trailing: const SizedBox.shrink(),
+                      trailing: SizedBox.shrink(),
                     ),
                   ],
                 ),
@@ -619,7 +619,7 @@ class _SettingsTile extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.2),
+                color: iconColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: iconColor, size: 22),

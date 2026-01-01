@@ -188,8 +188,8 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: _selectedIndices.length >= 3
-                          ? AppColors.successGreen.withOpacity(0.2)
-                          : AppColors.lavaOrange.withOpacity(0.2),
+                          ? AppColors.successGreen.withValues(alpha:0.2)
+                          : AppColors.lavaOrange.withValues(alpha:0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -228,7 +228,7 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppColors.lavaOrange.withOpacity(0.2)
+                            ? AppColors.lavaOrange.withValues(alpha:0.2)
                             : AppColors.cardBackground,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
@@ -340,12 +340,12 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
                                 valueColor: AlwaysStoppedAnimation(Colors.white),
                               ),
                             )
-                          : Row(
+                          : const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   AppStrings.habitsStart,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w600,
                                   ),

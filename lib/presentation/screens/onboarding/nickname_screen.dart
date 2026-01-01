@@ -167,7 +167,7 @@ class _NicknameScreenState extends ConsumerState<NicknameScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: _controller.text == suggestion
-                            ? AppColors.lavaOrange.withOpacity(0.2)
+                            ? AppColors.lavaOrange.withValues(alpha:0.2)
                             : AppColors.deadGray,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
@@ -206,18 +206,18 @@ class _NicknameScreenState extends ConsumerState<NicknameScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         AppStrings.nicknameNext,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward, size: 24),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward, size: 24),
                     ],
                   ),
                 ),

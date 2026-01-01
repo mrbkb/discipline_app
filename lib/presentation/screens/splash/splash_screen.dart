@@ -1,6 +1,5 @@
-
 // ============================================
-// FICHIER 26/30 : lib/presentation/screens/splash/splash_screen.dart
+// FICHIER CORRIGÉ : lib/presentation/screens/splash/splash_screen.dart
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -64,7 +63,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     
     if (!mounted) return;
     
-    // Check if onboarding is completed
+    // ✅ FIX: Read provider AFTER mounted check
     final isOnboardingCompleted = ref.read(isOnboardingCompletedProvider);
     
     // Navigate to appropriate screen
@@ -107,8 +106,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       child: Lottie.asset(
                         AppAssets.flameAnimation,
                         repeat: true,
-                        // Note: You can use a simple Container with emoji if no Lottie file
-                        // child: Text('🔥', style: TextStyle(fontSize: 120)),
+                        // ✅ FIX: Fallback si fichier manquant
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Text('🔥', style: TextStyle(fontSize: 120));
+                        },
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -135,7 +136,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     const SizedBox(height: 8),
                     
                     // Tagline
-                    Text(
+                    const Text(
                       'Le feu qui ne s\'éteint jamais',
                       style: TextStyle(
                         fontFamily: 'Poppins',
@@ -147,7 +148,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     const SizedBox(height: 48),
                     
                     // Loading indicator
-                    SizedBox(
+                    const SizedBox(
                       width: 30,
                       height: 30,
                       child: CircularProgressIndicator(

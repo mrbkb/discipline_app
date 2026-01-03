@@ -1,5 +1,5 @@
 // ============================================
-// FICHIER CORRIGÉ : lib/presentation/providers/user_provider.dart
+// FICHIER CORRIGÉ ULTIME : lib/presentation/providers/user_provider.dart
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/user_model.dart';
@@ -13,14 +13,13 @@ final userRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository();
 });
 
-// ✅ FIX: StreamProvider au lieu de StateNotifierProvider
-// Cela écoute les changements dans Hive directement
+// ✅ StateNotifierProvider
 final userProvider = StateNotifierProvider<UserNotifier, UserModel?>((ref) {
   final repository = ref.watch(userRepositoryProvider);
   return UserNotifier(repository);
 });
 
-// ✅ FIX: Providers qui se recalculent automatiquement
+// Providers dérivés
 final isOnboardingCompletedProvider = Provider<bool>((ref) {
   final user = ref.watch(userProvider);
   return user?.onboardingCompleted ?? false;
@@ -41,13 +40,11 @@ final userNicknameProvider = Provider<String>((ref) {
   return user?.nickname ?? 'Champion';
 });
 
-// ✅ NOUVEAU: Provider pour la dernière sync
 final lastSyncProvider = Provider<DateTime?>((ref) {
   final user = ref.watch(userProvider);
   return user?.lastSyncAt;
 });
 
-// ✅ NOUVEAU: Provider pour le statut de backup
 final hasBackedUpProvider = Provider<bool>((ref) {
   final user = ref.watch(userProvider);
   return user?.hasBackedUp ?? false;
@@ -65,13 +62,21 @@ class UserNotifier extends StateNotifier<UserModel?> {
   Future<void> _loadUser() async {
     state = _repository.getUser();
     
-    // Initialize Firebase Auth if user doesn't have UID
     if (state != null && state!.firebaseUid == null) {
       await _initializeFirebaseAuth();
     }
   }
   
-  // ✅ FIX: Méthode publique pour forcer le refresh
+  // ✅ FIX CRITIQUE: Forcer la notification de Riverpod
+  // En créant une NOUVELLE instance avec copyWith
+  void _notifyStateChange() {
+    if (state != null) {
+      print('🔔 [UserNotifier] Forcing state notification');
+      // ✅ Créer une nouvelle instance pour déclencher le rebuild
+      state = state!.copyWith();
+    }
+  }
+  
   Future<void> refresh() async {
     await _loadUser();
   }
@@ -84,6 +89,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
       if (user != null) {
         await _repository.updateFirebaseUid(user.uid, anonymous: user.isAnonymous);
         await _loadUser();
+        _notifyStateChange(); // ✅ Forcer notification
       }
     } catch (e) {
       print('Error initializing Firebase Auth: $e');
@@ -99,7 +105,8 @@ class UserNotifier extends StateNotifier<UserModel?> {
       
       if (firebaseUser != null) {
         await _repository.upgradeToEmail(email);
-        await _loadUser(); // ✅ Refresh après modification
+        await _loadUser();
+        _notifyStateChange(); // ✅ Forcer notification
         
         await AnalyticsService.logEvent(
           name: 'account_upgraded',
@@ -131,23 +138,35 @@ class UserNotifier extends StateNotifier<UserModel?> {
   // ========== UPDATE ==========
   
   Future<void> updateNickname(String nickname) async {
+    print('🔵 [UserNotifier] updateNickname: $nickname');
+    print('  Current state: ${state?.nickname}');
+    
     await _repository.updateNickname(nickname);
-    await _loadUser(); // ✅ Refresh immédiat
+    
+    // ✅ Recharger depuis Hive
+    state = _repository.getUser();
+    print('  New state: ${state?.nickname}');
+    
+    // ✅ CRITIQUE: Forcer la notification
+    _notifyStateChange();
   }
   
   Future<void> toggleHardMode() async {
     try {
+      print('🔵 [UserNotifier] toggleHardMode');
+      print('  Current state: ${state?.isHardMode}');
+      
       await _repository.toggleHardMode();
-      await _loadUser(); // ✅ Refresh immédiat
+      
+      // ✅ Recharger depuis Hive
+      state = _repository.getUser();
+      print('  New state: ${state?.isHardMode}');
+      
+      // ✅ CRITIQUE: Forcer la notification
+      _notifyStateChange();
       
       final user = state;
-      if (user == null) {
-        print('Warning: User is null after toggleHardMode');
-        return;
-      }
-      
-      // Update notifications
-      if (user.notificationsEnabled) {
+      if (user != null && user.notificationsEnabled) {
         try {
           await NotificationService.scheduleDaily(
             hour: user.reminderHour,
@@ -155,19 +174,18 @@ class UserNotifier extends StateNotifier<UserModel?> {
             isHardMode: user.isHardMode,
           );
         } catch (e) {
-          print('Error scheduling notifications: $e');
+          print('❌ Error scheduling notifications: $e');
         }
       }
       
-      // Analytics
       try {
-        await AnalyticsService.logHardModeToggled(user.isHardMode);
+        await AnalyticsService.logHardModeToggled(state!.isHardMode);
       } catch (e) {
-        print('Error logging hard mode toggle: $e');
+        print('❌ Error logging hard mode toggle: $e');
       }
       
     } catch (e) {
-      print('Error in toggleHardMode: $e');
+      print('❌ Error in toggleHardMode: $e');
       rethrow;
     }
   }
@@ -176,13 +194,20 @@ class UserNotifier extends StateNotifier<UserModel?> {
     String? reminder,
     String? lateReminder,
   }) async {
+    print('🔵 [UserNotifier] updateReminderTimes');
+    
     await _repository.updateReminderTimes(
       reminder: reminder,
       lateReminder: lateReminder,
     );
-    await _loadUser(); // ✅ Refresh immédiat
     
-    // Reschedule notifications
+    // ✅ Recharger depuis Hive
+    state = _repository.getUser();
+    print('  New times: ${state?.reminderTime}, ${state?.lateReminderTime}');
+    
+    // ✅ CRITIQUE: Forcer la notification
+    _notifyStateChange();
+    
     final user = state;
     if (user != null && user.notificationsEnabled) {
       try {
@@ -192,14 +217,23 @@ class UserNotifier extends StateNotifier<UserModel?> {
           isHardMode: user.isHardMode,
         );
       } catch (e) {
-        print('Error rescheduling notifications: $e');
+        print('❌ Error rescheduling notifications: $e');
       }
     }
   }
   
   Future<void> toggleNotifications() async {
+    print('🔵 [UserNotifier] toggleNotifications');
+    print('  Current state: ${state?.notificationsEnabled}');
+    
     await _repository.toggleNotifications();
-    await _loadUser(); // ✅ Refresh immédiat
+    
+    // ✅ Recharger depuis Hive
+    state = _repository.getUser();
+    print('  New state: ${state?.notificationsEnabled}');
+    
+    // ✅ CRITIQUE: Forcer la notification
+    _notifyStateChange();
     
     final user = state;
     if (user != null) {
@@ -214,16 +248,22 @@ class UserNotifier extends StateNotifier<UserModel?> {
           await NotificationService.cancelAll();
         }
       } catch (e) {
-        print('Error toggling notifications: $e');
+        print('❌ Error toggling notifications: $e');
       }
     }
   }
   
   Future<void> completeOnboarding() async {
-    await _repository.completeOnboarding();
-    await _loadUser(); // ✅ Refresh immédiat
+    print('🔵 [UserNotifier] completeOnboarding');
     
-    // Schedule notifications
+    await _repository.completeOnboarding();
+    
+    // ✅ Recharger depuis Hive
+    state = _repository.getUser();
+    
+    // ✅ CRITIQUE: Forcer la notification
+    _notifyStateChange();
+    
     final user = state;
     if (user != null && user.notificationsEnabled) {
       try {
@@ -233,13 +273,20 @@ class UserNotifier extends StateNotifier<UserModel?> {
           isHardMode: user.isHardMode,
         );
       } catch (e) {
-        print('Error scheduling initial notifications: $e');
+        print('❌ Error scheduling initial notifications: $e');
       }
     }
   }
   
   Future<void> markBackedUp() async {
+    print('🔵 [UserNotifier] markBackedUp');
+    
     await _repository.markBackedUp();
-    await _loadUser(); // ✅ Refresh immédiat
+    
+    // ✅ Recharger depuis Hive
+    state = _repository.getUser();
+    
+    // ✅ CRITIQUE: Forcer la notification
+    _notifyStateChange();
   }
 }

@@ -1,5 +1,5 @@
 // ============================================
-// FICHIER 24/30 : lib/presentation/providers/stats_provider.dart
+// FICHIER CORRIGÉ : lib/presentation/providers/stats_provider.dart
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,6 +12,64 @@ import 'habits_provider.dart';
 // Repository provider
 final snapshotRepositoryProvider = Provider<SnapshotRepository>((ref) {
   return SnapshotRepository();
+});
+
+// ✅ FIX: Calculer les stats en temps réel depuis les habits, pas les snapshots
+final currentStatsProvider = Provider<CurrentStats>((ref) {
+  final habits = ref.watch(activeHabitsProvider);
+  
+  if (habits.isEmpty) {
+    return CurrentStats(
+      completedToday: 0,
+      totalHabits: 0,
+      completionRate: 0.0,
+      totalStreak: 0,
+      averageStreak: 0.0,
+      bestStreak: 0,
+      perfectDays: 0,
+      totalActiveDays: 0,
+    );
+  }
+  
+  // Calculer en temps réel
+  final completedToday = habits.where((h) => h.isCompletedToday()).length;
+  final totalHabits = habits.length;
+  final completionRate = totalHabits > 0 ? completedToday / totalHabits : 0.0;
+  
+  // Total streak = somme de tous les streaks actuels
+  final totalStreak = habits.fold<int>(0, (sum, h) => sum + h.currentStreak);
+  
+  // Average streak
+  final averageStreak = totalHabits > 0 ? totalStreak / totalHabits : 0.0;
+  
+  // Best streak parmi toutes les habitudes
+  final bestStreak = habits.isEmpty 
+      ? 0 
+      : habits.map((h) => h.bestStreak).reduce((a, b) => a > b ? a : b);
+  
+  // Snapshots pour les stats historiques
+  final snapshotRepo = ref.watch(snapshotRepositoryProvider);
+  final perfectDays = snapshotRepo.countPerfectDays();
+  final totalActiveDays = snapshotRepo.getSnapshotsCount();
+  
+  print('📊 [Stats] Calculated:');
+  print('  Completed today: $completedToday/$totalHabits');
+  print('  Total streak: $totalStreak');
+  print('  Average streak: $averageStreak');
+  print('  Best streak: $bestStreak');
+  print('  Perfect days: $perfectDays');
+  print('  Total active days: $totalActiveDays');
+  
+  return CurrentStats(
+    completedToday: completedToday,
+    totalHabits: totalHabits,
+    completionRate: completionRate,
+    totalStreak: totalStreak,
+    averageStreak: averageStreak,
+    bestStreak: bestStreak,
+    perfectDays: perfectDays,
+    totalActiveDays: totalActiveDays,
+  );
 });
 
 // Weekly snapshots provider
@@ -39,7 +97,7 @@ final weeklyCompletionPercentageProvider = Provider<int>((ref) {
   return (rate * 100).round();
 });
 
-// Best flame level provider
+// Best flame level provider (depuis les snapshots)
 final bestFlameLevelProvider = Provider<double>((ref) {
   final repository = ref.watch(snapshotRepositoryProvider);
   return repository.getBestFlameLevel();
@@ -71,14 +129,14 @@ final totalActiveDaysProvider = Provider<int>((ref) {
 
 // Best streak across all habits provider
 final bestStreakProvider = Provider<int>((ref) {
-  final habitRepository = ref.watch(habitRepositoryProvider);
-  return habitRepository.getBestStreak();
+  final stats = ref.watch(currentStatsProvider);
+  return stats.bestStreak;
 });
 
 // Average streak provider
 final averageStreakProvider = Provider<double>((ref) {
-  final habitRepository = ref.watch(habitRepositoryProvider);
-  return habitRepository.getAverageStreak();
+  final stats = ref.watch(currentStatsProvider);
+  return stats.averageStreak;
 });
 
 // Stats notifier for actions
@@ -87,6 +145,29 @@ final statsNotifierProvider = StateNotifierProvider<StatsNotifier, AsyncValue<vo
   final habitRepository = ref.watch(habitRepositoryProvider);
   return StatsNotifier(snapshotRepository, habitRepository);
 });
+
+// ✅ Classe pour regrouper les stats actuelles
+class CurrentStats {
+  final int completedToday;
+  final int totalHabits;
+  final double completionRate;
+  final int totalStreak;
+  final double averageStreak;
+  final int bestStreak;
+  final int perfectDays;
+  final int totalActiveDays;
+  
+  CurrentStats({
+    required this.completedToday,
+    required this.totalHabits,
+    required this.completionRate,
+    required this.totalStreak,
+    required this.averageStreak,
+    required this.bestStreak,
+    required this.perfectDays,
+    required this.totalActiveDays,
+  });
+}
 
 class StatsNotifier extends StateNotifier<AsyncValue<void>> {
   StatsNotifier(this._snapshotRepository, this._habitRepository) 
@@ -104,7 +185,10 @@ class StatsNotifier extends StateNotifier<AsyncValue<void>> {
       final habits = _habitRepository.getActiveHabits();
       await _snapshotRepository.createSnapshot(habits: habits);
       state = const AsyncValue.data(null);
+      
+      print('✅ [StatsNotifier] Today snapshot created');
     } catch (e, stack) {
+      print('❌ [StatsNotifier] Error creating snapshot: $e');
       state = AsyncValue.error(e, stack);
     }
   }
@@ -118,7 +202,10 @@ class StatsNotifier extends StateNotifier<AsyncValue<void>> {
         date: date,
       );
       state = const AsyncValue.data(null);
+      
+      print('✅ [StatsNotifier] Snapshot created for $date');
     } catch (e, stack) {
+      print('❌ [StatsNotifier] Error creating snapshot for $date: $e');
       state = AsyncValue.error(e, stack);
     }
   }
@@ -128,8 +215,9 @@ class StatsNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> cleanupOldSnapshots({int keepDays = 30}) async {
     try {
       await _snapshotRepository.deleteOldSnapshots(keepDays);
+      print('✅ [StatsNotifier] Old snapshots cleaned up');
     } catch (e) {
-      print('Error cleaning up old snapshots: $e');
+      print('❌ [StatsNotifier] Error cleaning up old snapshots: $e');
     }
   }
 }

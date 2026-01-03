@@ -59,7 +59,7 @@ class _NicknameScreenState extends ConsumerState<NicknameScreen> {
           backgroundColor: AppColors.dangerRed,
         ),
       );
-      return;
+      return; 
     }
     
     // Create user with nickname

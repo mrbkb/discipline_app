@@ -200,6 +200,8 @@ class UserModel extends HiveObject {
   
   // ========== COPY WITH ==========
   
+   /// ✅ CRITIQUE: copyWith() doit TOUJOURS retourner une NOUVELLE instance
+  /// même si aucun paramètre n'est fourni, pour déclencher le rebuild Riverpod
   UserModel copyWith({
     String? firebaseUid,
     String? nickname,
@@ -216,6 +218,7 @@ class UserModel extends HiveObject {
     int? totalHabitsCreated,
     int? totalDaysActive,
   }) {
+    // ✅ Retourne TOUJOURS une nouvelle instance
     return UserModel(
       firebaseUid: firebaseUid ?? this.firebaseUid,
       nickname: nickname ?? this.nickname,
@@ -232,10 +235,5 @@ class UserModel extends HiveObject {
       totalHabitsCreated: totalHabitsCreated ?? this.totalHabitsCreated,
       totalDaysActive: totalDaysActive ?? this.totalDaysActive,
     );
-  }
-  
-  @override
-  String toString() {
-    return 'UserModel(nickname: $nickname, uid: $firebaseUid, anonymous: $isAnonymous)';
   }
 }

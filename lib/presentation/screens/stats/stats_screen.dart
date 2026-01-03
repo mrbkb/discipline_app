@@ -1,6 +1,5 @@
-
 // ============================================
-// FICHIER 34/35 : lib/presentation/screens/stats/stats_screen.dart
+// FICHIER CORRIGÉ : lib/presentation/screens/stats/stats_screen.dart
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,11 +26,11 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Utiliser currentStatsProvider pour les stats en temps réel
+    final currentStats = ref.watch(currentStatsProvider);
     final weeklySnapshots = ref.watch(weeklySnapshotsProvider);
     final weeklyCompletionPercentage = ref.watch(weeklyCompletionPercentageProvider);
     final bestFlamePercentage = ref.watch(bestFlamePercentageProvider);
-    final perfectDaysCount = ref.watch(perfectDaysCountProvider);
-    final totalActiveDays = ref.watch(totalActiveDaysProvider);
     final habits = ref.watch(activeHabitsProvider);
 
     return SafeArea(
@@ -184,7 +183,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             ),
           ),
 
-          // Overall Stats Cards
+          // ✅ Overall Stats Cards - Utiliser currentStats
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -214,7 +213,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                           icon: Icons.star,
                           iconColor: AppColors.warningYellow,
                           label: 'Jours parfaits',
-                          value: '$perfectDaysCount',
+                          value: '${currentStats.perfectDays}',
                         ),
                       ),
                     ],
@@ -227,7 +226,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                           icon: Icons.calendar_today,
                           iconColor: AppColors.successGreen,
                           label: AppStrings.statsTotalDays,
-                          value: '$totalActiveDays',
+                          value: '${currentStats.totalActiveDays}',
                         ),
                       ),
                       const SizedBox(width: 12),

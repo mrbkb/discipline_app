@@ -1,5 +1,5 @@
 // ============================================
-// FICHIER CORRIGÉ : lib/presentation/screens/settings/settings_screen.dart
+// FICHIER FINAL CORRIGÉ : lib/presentation/screens/settings/settings_screen.dart
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,28 +9,13 @@ import '../../../core/services/analytics_service.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/sync_provider.dart';
 
-class SettingsScreen extends ConsumerStatefulWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  @override
-  void initState() {
-    super.initState();
-    AnalyticsService.logScreenView('settings');
-  }
-
-  // ✅ FIX: Méthode pour forcer le refresh
-  void _refreshUserData() {
-    ref.read(userProvider.notifier).refresh();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // ✅ FIX: Watch au lieu de read pour auto-refresh
+  Widget build(BuildContext context, WidgetRef ref) {
+    // ✅ FIX CRITIQUE: Watch user DIRECTEMENT dans le build
+    // Pas de variable locale qui ne se rafraîchit pas !
     final user = ref.watch(userProvider);
     final syncState = ref.watch(syncNotifierProvider);
     final isOnline = ref.watch(isOnlineProvider);
@@ -58,7 +43,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.lavaOrange.withValues(alpha:0.2),
+                    AppColors.lavaOrange.withValues(alpha: 0.2),
                     AppColors.cardBackground,
                   ],
                   begin: Alignment.topLeft,
@@ -77,7 +62,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: AppColors.lavaOrange.withValues(alpha:0.2),
+                      color: AppColors.lavaOrange.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: AppColors.lavaOrange,
@@ -94,37 +79,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Nickname - ✅ Se met à jour automatiquement
+                  // ✅ Nickname - Se met à jour automatiquement
                   Text(
                     user.nickname,
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      color: AppColors.lavaOrange,
-                    ),
+                          color: AppColors.lavaOrange,
+                        ),
                   ),
                   const SizedBox(height: 8),
 
                   // Stats
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _ProfileStat(
-                        icon: Icons.check_circle,
-                        value: '${user.totalHabitsCreated}',
-                        label: 'Habitudes',
-                      ),
-                      const SizedBox(width: 24),
-                      _ProfileStat(
-                        icon: Icons.calendar_today,
-                        value: '${user.totalDaysActive}',
-                        label: 'Jours actifs',
-                      ),
-                    ],
-                  ),
+  mainAxisAlignment: MainAxisAlignment.center,
+  children: [
+    _ProfileStat(
+      icon: Icons.check_circle,
+      value: '${user.totalHabitsCreated}', // ✅ Nombre total d'habitudes créées
+      label: 'Habitudes',
+    ),
+    const SizedBox(width: 24),
+    _ProfileStat(
+      icon: Icons.calendar_today,
+      value: '${user.totalDaysActive}', // ✅ Nombre de jours actifs
+      label: 'Jours actifs',
+    ),
+  ],
+),
                   const SizedBox(height: 16),
 
                   // Edit nickname button
                   TextButton.icon(
-                    onPressed: () => _showEditNicknameDialog(context, user.nickname),
+                    onPressed: () => _showEditNicknameDialog(context, ref, user.nickname),
                     icon: const Icon(Icons.edit, size: 18),
                     label: const Text('Modifier le surnom'),
                     style: TextButton.styleFrom(
@@ -146,8 +131,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Text(
                     'Préférences',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -166,30 +151,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Hard Mode - ✅ Se met à jour automatiquement
+                    // ✅ Hard Mode - Valeur directement depuis user
                     _SettingsTile(
                       icon: Icons.whatshot,
                       iconColor: AppColors.dangerRed,
                       title: AppStrings.settingsHardMode,
                       subtitle: AppStrings.settingsHardModeDesc,
                       trailing: Switch(
-                        value: user.isHardMode,
+                        value: user.isHardMode, // ✅ Directement depuis user
                         onChanged: (value) async {
                           await ref.read(userProvider.notifier).toggleHardMode();
-                          // Pas besoin de setState, le provider se refresh auto
                         },
                       ),
                     ),
                     const Divider(height: 1, color: AppColors.divider),
 
-                    // Notifications - ✅ Se met à jour automatiquement
+                    // ✅ Notifications - Valeur directement depuis user
                     _SettingsTile(
                       icon: Icons.notifications,
                       iconColor: AppColors.lavaOrange,
                       title: AppStrings.settingsNotifications,
-                      subtitle: user.notificationsEnabled ? 'Activées' : 'Désactivées',
+                      subtitle: user.notificationsEnabled ? 'Activées' : 'Désactivées', // ✅ Directement depuis user
                       trailing: Switch(
-                        value: user.notificationsEnabled,
+                        value: user.notificationsEnabled, // ✅ Directement depuis user
                         onChanged: (value) async {
                           await ref.read(userProvider.notifier).toggleNotifications();
                         },
@@ -197,30 +181,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     const Divider(height: 1, color: AppColors.divider),
 
-                    // Reminder Time - ✅ Se met à jour automatiquement
+                    // ✅ Reminder Time - Valeur directement depuis user
                     _SettingsTile(
                       icon: Icons.access_time,
                       iconColor: Colors.blue,
                       title: AppStrings.settingsReminderTime,
-                      subtitle: user.reminderTime,
+                      subtitle: user.reminderTime, // ✅ Directement depuis user
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _showTimePickerDialog(
                         context,
+                        ref,
                         user.reminderTime,
                         isLateReminder: false,
                       ),
                     ),
                     const Divider(height: 1, color: AppColors.divider),
 
-                    // Late Reminder - ✅ Se met à jour automatiquement
+                    // ✅ Late Reminder - Valeur directement depuis user
                     _SettingsTile(
                       icon: Icons.alarm,
                       iconColor: AppColors.warningYellow,
                       title: AppStrings.settingsLateReminder,
-                      subtitle: user.lateReminderTime,
+                      subtitle: user.lateReminderTime, // ✅ Directement depuis user
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _showTimePickerDialog(
                         context,
+                        ref,
                         user.lateReminderTime,
                         isLateReminder: true,
                       ),
@@ -243,8 +229,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Text(
                     'Sauvegarde',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -263,12 +249,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Backup button - ✅ Se met à jour automatiquement
+                    // ✅ Backup button - Valeur directement depuis user
                     _SettingsTile(
                       icon: Icons.cloud_upload,
                       iconColor: AppColors.successGreen,
                       title: AppStrings.settingsBackup,
-                      subtitle: user.hasBackedUp
+                      subtitle: user.hasBackedUp // ✅ Directement depuis user
                           ? 'Dernière sauvegarde: ${_formatLastSync(user.lastSyncAt)}'
                           : 'Jamais sauvegardé',
                       trailing: syncState.status == SyncStatus.syncing
@@ -294,7 +280,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       subtitle: 'Récupérer depuis le cloud',
                       trailing: const Icon(Icons.chevron_right),
                       onTap: isOnline && user.hasBackedUp
-                          ? () => _showRestoreDialog(context)
+                          ? () => _showRestoreDialog(context, ref)
                           : null,
                     ),
                   ],
@@ -339,7 +325,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
 
-          // Sync status message - ✅ Se met à jour automatiquement
+          // Sync status message
           if (syncState.message != null)
             SliverToBoxAdapter(
               child: Padding(
@@ -348,16 +334,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: syncState.status == SyncStatus.success
-                        ? AppColors.successGreen.withValues(alpha:0.1)
-                        : AppColors.dangerRed.withValues(alpha:0.1),
+                        ? AppColors.successGreen.withValues(alpha: 0.1)
+                        : AppColors.dangerRed.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        syncState.status == SyncStatus.success
-                            ? Icons.check_circle
-                            : Icons.error,
+                        syncState.status == SyncStatus.success ? Icons.check_circle : Icons.error,
                         color: syncState.status == SyncStatus.success
                             ? AppColors.successGreen
                             : AppColors.dangerRed,
@@ -391,8 +375,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Text(
                     'À propos',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -440,20 +424,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   String _formatLastSync(DateTime? lastSync) {
     if (lastSync == null) return 'Jamais';
-    
+
     final now = DateTime.now();
     final diff = now.difference(lastSync);
-    
+
     if (diff.inMinutes < 1) return 'À l\'instant';
     if (diff.inHours < 1) return 'Il y a ${diff.inMinutes}min';
     if (diff.inDays < 1) return 'Il y a ${diff.inHours}h';
     return 'Il y a ${diff.inDays}j';
   }
 
-  // ✅ FIX: Méthode simplifiée avec refresh auto
-  void _showEditNicknameDialog(BuildContext context, String currentNickname) {
+  // ✅ FIX: Passer le ref pour pouvoir accéder au notifier
+  void _showEditNicknameDialog(BuildContext context, WidgetRef ref, String currentNickname) {
     final controller = TextEditingController(text: currentNickname);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -479,7 +463,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               if (newNickname.isNotEmpty) {
                 await ref.read(userProvider.notifier).updateNickname(newNickname);
                 if (context.mounted) Navigator.pop(context);
-                // Pas besoin de setState, le provider se refresh auto
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.lavaOrange),
@@ -490,9 +473,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  // ✅ FIX: Méthode simplifiée avec refresh auto
+  // ✅ FIX: Passer le ref pour pouvoir accéder au notifier
   void _showTimePickerDialog(
     BuildContext context,
+    WidgetRef ref,
     String currentTime,
     {required bool isLateReminder}
   ) async {
@@ -520,17 +504,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (picked != null) {
       final timeString = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-      
+
       if (isLateReminder) {
         await ref.read(userProvider.notifier).updateReminderTimes(lateReminder: timeString);
       } else {
         await ref.read(userProvider.notifier).updateReminderTimes(reminder: timeString);
       }
-      // Pas besoin de setState, le provider se refresh auto
     }
   }
 
-  void _showRestoreDialog(BuildContext context) {
+  void _showRestoreDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -560,7 +543,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 }
 
 // ============================================
-// WIDGETS INTERNES (inchangés)
+// WIDGETS INTERNES
 // ============================================
 
 class _ProfileStat extends StatelessWidget {

@@ -1,24 +1,26 @@
-
 // ============================================
-// FICHIER 22/30 : lib/presentation/providers/flame_provider.dart
+// FICHIER CORRIGÉ : lib/presentation/providers/flame_provider.dart
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'habits_provider.dart';
 import '../../core/constants/app_strings.dart';
 
-// Flame level provider (0.0 - 1.0)
+// ✅ FIX: Flame level provider calculé EN TEMPS RÉEL depuis les habits AUJOURD'HUI
 final flameLevelProvider = Provider<double>((ref) {
   final habits = ref.watch(activeHabitsProvider);
   
   if (habits.isEmpty) return 1.0;
   
-  // Calculate average health score
-  double totalHealth = 0;
-  for (final habit in habits) {
-    totalHealth += habit.healthScore;
-  }
+  // ✅ Calculer combien d'habitudes sont complétées AUJOURD'HUI
+  final completedToday = habits.where((h) => h.isCompletedToday()).length;
+  final totalHabits = habits.length;
   
-  return totalHealth / habits.length;
+  // ✅ Niveau = pourcentage de complétion aujourd'hui
+  final level = completedToday / totalHabits;
+  
+  print('🔥 [FlameProvider] Completed today: $completedToday/$totalHabits = ${(level * 100).toInt()}%');
+  
+  return level;
 });
 
 // Flame percentage provider (0 - 100)

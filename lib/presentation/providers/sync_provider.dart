@@ -10,7 +10,7 @@ import '../../data/repositories/habit_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/repositories/snapshot_repository.dart';
 import 'user_provider.dart';
-import 'habits_provider.dart';
+import 'habits_provider.dart' hide userRepositoryProvider;
 
 // Firebase repository provider
 final firebaseRepositoryProvider = Provider<FirebaseRepository>((ref) {

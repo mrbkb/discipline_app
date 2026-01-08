@@ -83,6 +83,78 @@ class SyncNotifier extends StateNotifier<SyncState> {
   final HabitRepository _habitRepo;
   final SnapshotRepository _snapshotRepo;
   final Ref _ref;
+
+  
+/// ✅ NOUVEAU: Première synchronisation (migration local → cloud)
+Future<void> performFirstSync() async {
+  state = state.copyWith(
+    status: SyncStatus.syncing, 
+    message: 'Première synchronisation...'
+  );
+  
+  try {
+    final user = _userRepo.getUser();
+    if (user == null) {
+      throw Exception('No user found');
+    }
+    
+    // Vérifier qu'on a bien un firebaseUid maintenant
+    if (user.firebaseUid == null) {
+      throw Exception('User not connected to Firebase');
+    }
+    
+    print('🔄 [Sync] Starting first sync for: ${user.firebaseUid}');
+    
+    // Récupérer toutes les données locales
+    final habits = _habitRepo.getAllHabits();
+    final snapshots = _snapshotRepo.getAllSnapshots();
+    
+    print('📦 [Sync] Data to sync:');
+    print('   - ${habits.length} habits');
+    print('   - ${snapshots.length} snapshots');
+    
+    // Envoyer tout sur Firebase
+    await _firebaseRepo.performFullBackup(
+      uid: user.firebaseUid!,
+      user: user,
+      habits: habits,
+      snapshots: snapshots,
+    );
+    
+    // Marquer comme sauvegardé
+    await _userRepo.markBackedUp();
+    
+    state = state.copyWith(
+      status: SyncStatus.success,
+      message: '✅ Première sync réussie ! ${habits.length} habitudes synchronisées',
+      lastSyncAt: DateTime.now(),
+    );
+    
+    print('✅ [Sync] First sync completed successfully');
+    
+    // Reset to idle after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        state = state.copyWith(status: SyncStatus.idle, message: null);
+      }
+    });
+    
+  } catch (e) {
+    print('❌ [Sync] First sync failed: $e');
+    
+    state = state.copyWith(
+      status: SyncStatus.error,
+      message: 'Erreur de synchronisation: ${e.toString()}',
+    );
+    
+    // Reset to idle after 5 seconds
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) {
+        state = state.copyWith(status: SyncStatus.idle, message: null);
+      }
+    });
+  }
+}
   
   // ========== BACKUP ==========
   

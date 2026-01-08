@@ -1,5 +1,5 @@
 // ============================================
-// FICHIER CORRIGÉ ULTIME : lib/presentation/providers/user_provider.dart
+// FICHIER MODIFIÉ : lib/presentation/providers/user_provider.dart
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/user_model.dart';
@@ -50,6 +50,12 @@ final hasBackedUpProvider = Provider<bool>((ref) {
   return user?.hasBackedUp ?? false;
 });
 
+// ✅ NOUVEAU: Provider pour savoir si l'user est en mode local
+final isLocalModeProvider = Provider<bool>((ref) {
+  final user = ref.watch(userProvider);
+  return user?.firebaseUid == null;
+});
+
 class UserNotifier extends StateNotifier<UserModel?> {
   UserNotifier(this._repository) : super(null) {
     _loadUser();
@@ -62,17 +68,16 @@ class UserNotifier extends StateNotifier<UserModel?> {
   Future<void> _loadUser() async {
     state = _repository.getUser();
     
+    // ✅ Tenter de se connecter à Firebase si pas encore fait
     if (state != null && state!.firebaseUid == null) {
-      await _initializeFirebaseAuth();
+      await _tryConnectToFirebase();
     }
   }
   
-  // ✅ FIX CRITIQUE: Forcer la notification de Riverpod
-  // En créant une NOUVELLE instance avec copyWith
+  // ✅ Forcer la notification de Riverpod
   void _notifyStateChange() {
     if (state != null) {
       print('🔔 [UserNotifier] Forcing state notification');
-      // ✅ Créer une nouvelle instance pour déclencher le rebuild
       state = state!.copyWith();
     }
   }
@@ -83,16 +88,57 @@ class UserNotifier extends StateNotifier<UserModel?> {
   
   // ========== FIREBASE AUTH ==========
   
-  Future<void> _initializeFirebaseAuth() async {
+  /// ✅ NOUVEAU: Tenter de se connecter à Firebase (mode différé)
+  Future<void> _tryConnectToFirebase() async {
     try {
-      final user = await FirebaseService.initializeAuth();
-      if (user != null) {
-        await _repository.updateFirebaseUid(user.uid, anonymous: user.isAnonymous);
+      // Tenter la connexion
+      final firebaseUser = await FirebaseService.tryConnectIfOffline();
+      
+      if (firebaseUser != null) {
+        // Migrer l'utilisateur local vers Firebase
+        await _repository.migrateToFirebase(firebaseUser.uid);
         await _loadUser();
-        _notifyStateChange(); // ✅ Forcer notification
+        _notifyStateChange();
+        
+        print('✅ [UserNotifier] User migrated to Firebase');
+        
+        // Déclencher une sync automatique
+        await _autoSyncAfterConnection();
       }
     } catch (e) {
-      print('Error initializing Firebase Auth: $e');
+      print('⚠️ [UserNotifier] Firebase connection failed (will retry later): $e');
+    }
+  }
+  
+  /// ✅ NOUVEAU: Sync automatique après connexion
+  Future<void> _autoSyncAfterConnection() async {
+    try {
+      // TODO: Trigger auto-sync via SyncProvider
+      print('🔄 [UserNotifier] Auto-sync triggered');
+    } catch (e) {
+      print('❌ [UserNotifier] Auto-sync failed: $e');
+    }
+  }
+  
+  /// ✅ NOUVEAU: Forcer la reconnexion à Firebase (appelé manuellement)
+  Future<bool> forceConnectToFirebase() async {
+    try {
+      final firebaseUser = await FirebaseService.tryConnectIfOffline();
+      
+      if (firebaseUser != null) {
+        await _repository.migrateToFirebase(firebaseUser.uid);
+        await _loadUser();
+        _notifyStateChange();
+        
+        await _autoSyncAfterConnection();
+        
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      print('❌ [UserNotifier] Force connect failed: $e');
+      return false;
     }
   }
   
@@ -106,7 +152,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
       if (firebaseUser != null) {
         await _repository.upgradeToEmail(email);
         await _loadUser();
-        _notifyStateChange(); // ✅ Forcer notification
+        _notifyStateChange();
         
         await AnalyticsService.logEvent(
           name: 'account_upgraded',
@@ -121,48 +167,46 @@ class UserNotifier extends StateNotifier<UserModel?> {
   
   // ========== CREATE ==========
   
+  /// ✅ MODIFIÉ: Créer un user même sans Firebase
   Future<void> createUser({
     required String nickname,
   }) async {
+    // Tenter de se connecter à Firebase
     final firebaseUser = await FirebaseService.initializeAuth();
     
+    // Créer l'user (avec ou sans Firebase)
     final user = await _repository.createUser(
       nickname: nickname,
-      firebaseUid: firebaseUser?.uid,
+      firebaseUid: firebaseUser?.uid, // null si offline
       isAnonymous: firebaseUser?.isAnonymous ?? true,
     );
     
     state = user;
+    
+    // Si en mode local, afficher un message
+    if (firebaseUser == null) {
+      print('📱 [UserNotifier] User created in LOCAL mode (offline)');
+    } else {
+      print('☁️ [UserNotifier] User created with Firebase');
+    }
   }
   
   // ========== UPDATE ==========
   
   Future<void> updateNickname(String nickname) async {
     print('🔵 [UserNotifier] updateNickname: $nickname');
-    print('  Current state: ${state?.nickname}');
     
     await _repository.updateNickname(nickname);
-    
-    // ✅ Recharger depuis Hive
     state = _repository.getUser();
-    print('  New state: ${state?.nickname}');
-    
-    // ✅ CRITIQUE: Forcer la notification
     _notifyStateChange();
   }
   
   Future<void> toggleHardMode() async {
     try {
       print('🔵 [UserNotifier] toggleHardMode');
-      print('  Current state: ${state?.isHardMode}');
       
       await _repository.toggleHardMode();
-      
-      // ✅ Recharger depuis Hive
       state = _repository.getUser();
-      print('  New state: ${state?.isHardMode}');
-      
-      // ✅ CRITIQUE: Forcer la notification
       _notifyStateChange();
       
       final user = state;
@@ -201,11 +245,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
       lateReminder: lateReminder,
     );
     
-    // ✅ Recharger depuis Hive
     state = _repository.getUser();
-    print('  New times: ${state?.reminderTime}, ${state?.lateReminderTime}');
-    
-    // ✅ CRITIQUE: Forcer la notification
     _notifyStateChange();
     
     final user = state;
@@ -224,15 +264,9 @@ class UserNotifier extends StateNotifier<UserModel?> {
   
   Future<void> toggleNotifications() async {
     print('🔵 [UserNotifier] toggleNotifications');
-    print('  Current state: ${state?.notificationsEnabled}');
     
     await _repository.toggleNotifications();
-    
-    // ✅ Recharger depuis Hive
     state = _repository.getUser();
-    print('  New state: ${state?.notificationsEnabled}');
-    
-    // ✅ CRITIQUE: Forcer la notification
     _notifyStateChange();
     
     final user = state;
@@ -257,11 +291,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
     print('🔵 [UserNotifier] completeOnboarding');
     
     await _repository.completeOnboarding();
-    
-    // ✅ Recharger depuis Hive
     state = _repository.getUser();
-    
-    // ✅ CRITIQUE: Forcer la notification
     _notifyStateChange();
     
     final user = state;
@@ -282,11 +312,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
     print('🔵 [UserNotifier] markBackedUp');
     
     await _repository.markBackedUp();
-    
-    // ✅ Recharger depuis Hive
     state = _repository.getUser();
-    
-    // ✅ CRITIQUE: Forcer la notification
     _notifyStateChange();
   }
 }

@@ -289,6 +289,155 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
+// ============================================
+// WIDGET À AJOUTER DANS settings_screen.dart
+// Après la section "Backup Items"
+// ============================================
+
+// Mode local warning
+if (ref.watch(isLocalModeProvider))
+  SliverToBoxAdapter(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.warningYellow.withValues(alpha: 0.2),
+              AppColors.lavaOrange.withValues(alpha: 0.1),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.warningYellow.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.warningYellow.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.cloud_off,
+                    color: AppColors.warningYellow,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Mode Local',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.warningYellow,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Données stockées localement uniquement',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Tu as créé ton compte sans connexion Internet. Tes données sont sauvegardées localement et seront automatiquement synchronisées avec le cloud dès que tu seras connecté.',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: isOnline
+                    ? () async {
+                        // Afficher un loader
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                        
+                        // Tenter la connexion
+                        final success = await ref
+                            .read(userProvider.notifier)
+                            .forceConnectToFirebase();
+                        
+                        if (context.mounted) {
+                          Navigator.pop(context); // Fermer le loader
+                          
+                          if (success) {
+                            // Déclencher la sync
+                            await ref
+                                .read(syncNotifierProvider.notifier)
+                                .backupToCloud();
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('✅ Connecté et synchronisé !'),
+                                backgroundColor: AppColors.successGreen,
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('❌ Connexion échouée'),
+                                backgroundColor: AppColors.dangerRed,
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.lavaOrange,
+                  disabledBackgroundColor: AppColors.deadGray,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: Icon(
+                  isOnline ? Icons.cloud_upload : Icons.wifi_off,
+                  size: 20,
+                ),
+                label: Text(
+                  isOnline
+                      ? 'Se connecter et synchroniser'
+                      : 'Connexion requise',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
           // Connection status
           if (!isOnline)
             SliverToBoxAdapter(

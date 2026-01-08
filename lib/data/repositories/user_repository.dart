@@ -1,8 +1,8 @@
-
 // ============================================
-// FICHIER 18/30 : lib/data/repositories/user_repository.dart
+// FICHIER MODIFIÉ : lib/data/repositories/user_repository.dart
 // ============================================
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/services/storage_service.dart';
 import '../models/user_model.dart';
 
@@ -10,6 +10,7 @@ class UserRepository {
   final Box<UserModel> _box = StorageService.user;
   
   static const String _userKey = 'current_user';
+  static const _uuid = Uuid();
   
   // ========== CREATE / UPDATE ==========
   
@@ -18,21 +19,30 @@ class UserRepository {
     await _box.put(_userKey, user);
   }
   
-  /// Create initial user
+  /// ✅ MODIFIÉ: Create initial user SANS exiger firebaseUid
+  /// Génère un UUID local si pas de Firebase
   Future<UserModel> createUser({
     required String nickname,
     String? firebaseUid,
     bool isAnonymous = true,
   }) async {
+    // ✅ Si pas de firebaseUid (mode offline), générer un UUID local
+    final userId = firebaseUid ?? 'local_${_uuid.v4()}';
+    
     final user = UserModel(
       nickname: nickname,
-      firebaseUid: firebaseUid,
+      firebaseUid: userId.startsWith('local_') ? null : userId, // null si local
       createdAt: DateTime.now(),
       isAnonymous: isAnonymous,
       onboardingCompleted: false,
     );
     
     await saveUser(user);
+    
+    print('✅ [UserRepo] User created: ${userId.startsWith('local_') ? 'LOCAL' : 'FIREBASE'}');
+    print('   Nickname: $nickname');
+    print('   UID: $userId');
+    
     return user;
   }
   
@@ -99,6 +109,17 @@ class UserRepository {
     final user = getUser();
     if (user != null) {
       user.completeOnboarding();
+    }
+  }
+  
+  /// ✅ NOUVEAU: Migrer un utilisateur local vers Firebase
+  /// Appelé quand la connexion Internet est rétablie
+  Future<void> migrateToFirebase(String firebaseUid) async {
+    final user = getUser();
+    if (user != null && user.firebaseUid == null) {
+      print('🔄 [UserRepo] Migrating local user to Firebase: $firebaseUid');
+      user.updateFirebaseUid(firebaseUid, anonymous: true);
+      print('✅ [UserRepo] Migration successful');
     }
   }
   

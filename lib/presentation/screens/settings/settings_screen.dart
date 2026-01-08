@@ -8,6 +8,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/sync_provider.dart';
+import '../../widgets/notification_test_widget.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -564,6 +565,10 @@ if (ref.watch(isLocalModeProvider))
               ),
             ),
           ),
+          // DEBUG: Notification testing
+const SliverToBoxAdapter(
+  child: NotificationTestWidget(),
+),
 
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],

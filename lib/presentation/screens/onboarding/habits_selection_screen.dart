@@ -1,4 +1,3 @@
-
 // ============================================
 // FICHIER 29/30 : lib/presentation/screens/onboarding/habits_selection_screen.dart
 // ============================================
@@ -11,6 +10,7 @@ import '../../../core/services/analytics_service.dart';
 import '../../providers/habits_provider.dart';
 import '../../providers/user_provider.dart';
 import '../home/home_screen.dart';
+import 'notification_permission_screen.dart';
 
 class HabitsSelectionScreen extends ConsumerStatefulWidget {
   const HabitsSelectionScreen({super.key});
@@ -127,10 +127,11 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
       );
       
       if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-          (route) => false,
-        );
+        Navigator.of(context).push(
+  MaterialPageRoute(
+    builder: (context) => const NotificationPermissionScreen(),
+  ),
+);
       }
     } catch (e) {
       if (mounted) {

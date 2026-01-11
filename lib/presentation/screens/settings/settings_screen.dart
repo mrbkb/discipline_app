@@ -626,7 +626,7 @@ const SliverToBoxAdapter(
       ),
     );
   }
-
+  
   // ✅ FIX: Passer le ref pour pouvoir accéder au notifier
   void _showTimePickerDialog(
     BuildContext context,

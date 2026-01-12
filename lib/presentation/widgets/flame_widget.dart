@@ -1,16 +1,48 @@
 // ============================================
-// FICHIER CORRIGÉ : lib/presentation/widgets/flame_widget.dart
+// FICHIER OPTIMISÉ : lib/presentation/widgets/flame_widget.dart
+// ✅ Mise à jour INSTANTANÉE quand on coche/décoche
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../providers/flame_provider.dart';
 
-class FlameWidget extends ConsumerWidget {
+class FlameWidget extends ConsumerStatefulWidget {
   const FlameWidget({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FlameWidget> createState() => _FlameWidgetState();
+}
+
+class _FlameWidgetState extends ConsumerState<FlameWidget> 
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // ✅ Animation de pulsation pour rendre la flamme vivante
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+    
+    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ✅ Watch flame level - se met à jour INSTANTANÉMENT
     final flameLevel = ref.watch(flameLevelProvider);
     final flamePercentage = ref.watch(flamePercentageProvider);
 
@@ -39,54 +71,63 @@ class FlameWidget extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // 🔥 Flame animation
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Glow
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              _getFlameColor(flameLevel)
-                                  .withValues(alpha: 0.3),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Flame emoji
-                      TweenAnimationBuilder<double>(
-                        duration: const Duration(milliseconds: 1000),
-                        tween: Tween(begin: 0.9, end: 1.0),
-                        curve: Curves.easeInOut,
-                        builder: (context, scale, child) {
-                          return Transform.scale(
-                            scale: scale,
-                            child: Text(
-                              '🔥',
-                              style: TextStyle(
-                                fontSize:
-                                    120 * flameLevel.clamp(0.5, 1.0),
+                  // 🔥 Flame animation avec pulsation
+                  AnimatedBuilder(
+                    animation: _pulseAnimation,
+                    builder: (context, child) {
+                      return Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // ✅ Glow dynamique basé sur le niveau
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 500),
+                            width: 100 + (flameLevel * 50),
+                            height: 100 + (flameLevel * 50),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [
+                                  _getFlameColor(flameLevel)
+                                      .withValues(alpha: 0.4 * flameLevel),
+                                  Colors.transparent,
+                                ],
                               ),
                             ),
-                          );
-                        },
-                      ),
-                    ],
+                          ),
+
+                          // ✅ Emoji flamme avec animation
+                          Transform.scale(
+                            scale: _pulseAnimation.value,
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 300),
+                              style: TextStyle(
+                                fontSize: 80 + (flameLevel * 40),
+                              ),
+                              child: const Text('🔥'),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 6),
 
-                  // 🔢 Percentage (anti-overflow)
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
+                  // 🔢 Percentage avec animation de changement
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, animation) {
+                      return ScaleTransition(
+                        scale: animation,
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: child,
+                        ),
+                      );
+                    },
                     child: Text(
                       '$flamePercentage%',
+                      key: ValueKey<int>(flamePercentage),
                       style: TextStyle(
                         fontFamily: 'Montserrat',
                         fontSize: 48,
@@ -98,7 +139,7 @@ class FlameWidget extends ConsumerWidget {
 
                   const SizedBox(height: 4),
 
-                  // 🏷 Label sécurisé
+                  // 🏷 Label
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
@@ -116,7 +157,7 @@ class FlameWidget extends ConsumerWidget {
 
                   const SizedBox(height: 16),
 
-                  // 📊 Progress bar
+                  // 📊 Progress bar avec animation fluide
                   Container(
                     width: 200,
                     height: 8,
@@ -124,7 +165,9 @@ class FlameWidget extends ConsumerWidget {
                       color: AppColors.deadGray,
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: FractionallySizedBox(
+                    child: AnimatedFractionallySizedBox(
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutCubic,
                       alignment: Alignment.centerLeft,
                       widthFactor: flameLevel.clamp(0.0, 1.0),
                       child: Container(
@@ -137,6 +180,14 @@ class FlameWidget extends ConsumerWidget {
                             ],
                           ),
                           borderRadius: BorderRadius.circular(4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _getFlameColor(flameLevel)
+                                  .withValues(alpha: 0.3),
+                              blurRadius: 4,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
                       ),
                     ),

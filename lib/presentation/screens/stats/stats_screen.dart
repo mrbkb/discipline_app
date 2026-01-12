@@ -1,5 +1,5 @@
 // ============================================
-// FICHIER CORRIGÉ : lib/presentation/screens/stats/stats_screen.dart
+// FICHIER COMPLET AVEC ANIMATIONS : lib/presentation/screens/stats/stats_screen.dart
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,21 +17,55 @@ class StatsScreen extends ConsumerStatefulWidget {
   ConsumerState<StatsScreen> createState() => _StatsScreenState();
 }
 
-class _StatsScreenState extends ConsumerState<StatsScreen> {
+class _StatsScreenState extends ConsumerState<StatsScreen> 
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _barAnimation;
+  
   @override
   void initState() {
     super.initState();
     AnalyticsService.logScreenView('stats');
+    
+    // ✅ Animation controller pour les barres
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _barAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+    );
+    
+    // Démarrer l'animation
+    _animationController.forward();
+  }
+  
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // ✅ Rejouer l'animation à chaque fois que la page est affichée
+    _animationController.reset();
+    _animationController.forward();
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Utiliser currentStatsProvider pour les stats en temps réel
+    // ✅ Stats en temps réel depuis les habits
     final currentStats = ref.watch(currentStatsProvider);
-    final weeklySnapshots = ref.watch(weeklySnapshotsProvider);
-    final weeklyCompletionPercentage = ref.watch(weeklyCompletionPercentageProvider);
-    final bestFlamePercentage = ref.watch(bestFlamePercentageProvider);
     final habits = ref.watch(activeHabitsProvider);
+    
+    // ✅ Calculer les stats hebdomadaires EN TEMPS RÉEL
+    final weeklyData = _calculateWeeklyData(habits);
+    final weeklyCompletionPercentage = weeklyData['completionPercentage'] as int;
+    final bestFlamePercentage = ref.watch(bestFlamePercentageProvider);
 
     return SafeArea(
       child: CustomScrollView(
@@ -88,67 +122,106 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Bar Chart
+                  // Bar Chart avec données EN TEMPS RÉEL
                   SizedBox(
-                    height: 160,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: weeklySnapshots.asMap().entries.map((entry) {
-                        final snapshot = entry.value;
-                        final height = snapshot.completionRate * 140;
+                    height: 180, // ✅ FIX: Augmenté pour éviter l'overflow
+                    child: AnimatedBuilder(
+                      animation: _barAnimation,
+                      builder: (context, child) {
+                        final weeklyBars = weeklyData['bars'] as List<Map<String, dynamic>>;
                         
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                // Bar
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 500),
-                                  height: height.clamp(20.0, 140.0),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.bottomCenter,
-                                      end: Alignment.topCenter,
-                                      colors: [
-                                        _getCompletionColor(snapshot.completionRate),
-                                        _getCompletionColor(snapshot.completionRate)
-                                            .withValues(alpha: 0.7),
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: snapshot.isPerfectDay
-                                      ? const Center(
-                                          child: Icon(
-                                            Icons.star,
-                                            color: Colors.white,
-                                            size: 16,
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: weeklyBars.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final barData = entry.value;
+                            final date = barData['date'] as String;
+                            final completionRate = barData['completionRate'] as double;
+                            final isPerfect = barData['isPerfect'] as bool;
+                            
+                            // ✅ FIX: Animation échelonnée corrigée
+                            final delay = index * 0.08;  // Délai pour chaque barre
+                            final adjustedValue = (_barAnimation.value - delay).clamp(0.0, 1.0);
+                            final normalizedValue = delay < 1.0 
+                                ? adjustedValue / (1.0 - delay)
+                                : adjustedValue;
+                            final animValue = Curves.easeOutCubic.transform(normalizedValue.clamp(0.0, 1.0));
+                            
+                            final targetHeight = completionRate * 140;
+                            final animatedHeight = targetHeight * animValue;
+                            
+                            return Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 3), // ✅ FIX: Réduit de 4 à 3
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    // ✅ Barre animée
+                                    Container(
+                                      height: animatedHeight.clamp(20.0, 140.0),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.bottomCenter,
+                                          end: Alignment.topCenter,
+                                          colors: [
+                                            _getCompletionColor(completionRate),
+                                            _getCompletionColor(completionRate)
+                                                .withValues(alpha: 0.7),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                        boxShadow: isPerfect ? [
+                                          BoxShadow(
+                                            color: _getCompletionColor(completionRate)
+                                                .withValues(alpha: 0.3),
+                                            blurRadius: 8,
+                                            spreadRadius: 2,
                                           ),
-                                        )
-                                      : null,
+                                        ] : null,
+                                      ),
+                                      child: isPerfect
+                                          ? Center(
+                                              child: AnimatedOpacity(
+                                                opacity: animValue,
+                                                duration: const Duration(milliseconds: 300),
+                                                child: const Icon(
+                                                  Icons.star,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                ),
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    // ✅ Label avec fade-in
+                                    AnimatedOpacity(
+                                      opacity: animValue,
+                                      duration: const Duration(milliseconds: 300),
+                                      child: SizedBox(
+                                        height: 16, // ✅ FIX: Hauteur fixe pour éviter overflow
+                                        child: Text(
+                                          DateHelper.getDayLabel(date),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: completionRate == 1.0
+                                                ? AppColors.successGreen
+                                                : AppColors.textSecondary,
+                                            fontWeight: completionRate == 1.0
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 8),
-                                // Day label
-                                Text(
-                                  DateHelper.getDayLabel(snapshot.date),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: snapshot.completionRate == 1.0
-                                        ? AppColors.successGreen
-                                        : AppColors.textSecondary,
-                                    fontWeight: snapshot.completionRate == 1.0
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            );
+                          }).toList(),
                         );
-                      }).toList(),
+                      },
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -402,6 +475,56 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     if (rate >= 0.7) return AppColors.lavaOrange;
     if (rate >= 0.4) return AppColors.warningYellow;
     return AppColors.dangerRed;
+  }
+  
+  // ✅ NOUVELLE MÉTHODE : Calculer les stats hebdomadaires en temps réel
+  Map<String, dynamic> _calculateWeeklyData(List<dynamic> habits) {
+    final last7Days = DateHelper.getLast7Days();
+    final List<Map<String, dynamic>> bars = [];
+    int totalCompletionSum = 0;
+    
+    print('📊 Calculating weekly data for ${habits.length} habits');
+    
+    for (final dateString in last7Days) {
+      // Pour chaque jour, compter combien d'habitudes ont été complétées
+      int completedCount = 0;
+      final totalHabits = habits.length;
+      
+      if (totalHabits > 0) {
+        for (final habit in habits) {
+          // Vérifier si l'habitude a été complétée ce jour-là
+          if (habit.completedDates.contains(dateString)) {
+            completedCount++;
+          }
+        }
+      }
+      
+      final completionRate = totalHabits > 0 ? completedCount / totalHabits : 0.0;
+      final isPerfect = completedCount == totalHabits && totalHabits > 0;
+      
+      print('  $dateString: $completedCount/$totalHabits = ${(completionRate * 100).toInt()}%');
+      
+      bars.add({
+        'date': dateString,
+        'completionRate': completionRate,
+        'isPerfect': isPerfect,
+        'completed': completedCount,
+        'total': totalHabits,
+      });
+      
+      totalCompletionSum += (completionRate * 100).round();
+    }
+    
+    final averageCompletion = last7Days.isNotEmpty 
+        ? (totalCompletionSum / last7Days.length).round() 
+        : 0;
+    
+    print('📊 Average completion: $averageCompletion%');
+    
+    return {
+      'bars': bars,
+      'completionPercentage': averageCompletion,
+    };
   }
 }
 

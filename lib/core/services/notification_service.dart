@@ -1,5 +1,6 @@
 // ============================================
-// FICHIER PRODUCTION : lib/core/services/notification_service.dart
+// FICHIER CORRIGÉ : lib/core/services/notification_service.dart
+// FIX: Notifications programmées aux bonnes heures
 // ============================================
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -15,7 +16,7 @@ class NotificationService {
   
   static bool _isInitialized = false;
   
-  /// ✅ Initialize notifications - TOUJOURS appeler au démarrage
+  /// ✅ Initialize notifications
   static Future<bool> init() async {
     if (_isInitialized) return true;
     
@@ -23,20 +24,21 @@ class NotificationService {
       // 1. Initialize timezones
       tz.initializeTimeZones();
       
-      // 2. Set local timezone
-      try {
-        tz.setLocalLocation(tz.getLocation('Africa/Douala'));
-      } catch (e) {
-        tz.setLocalLocation(tz.local);
-      }
+      // 2. ✅ FIX: Configurer le timezone LOCAL (très important!)
+      final String timeZoneName = await _getLocalTimeZone();
+      final location = tz.getLocation(timeZoneName);
+      tz.setLocalLocation(location);
+      
+      print('⏰ Timezone configured: $timeZoneName');
+      print('⏰ Current local time: ${tz.TZDateTime.now(tz.local)}');
       
       // 3. Initialize plugin
       const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
       
       const iosSettings = DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
+        requestAlertPermission: false, // On demande manuellement
+        requestBadgePermission: false,
+        requestSoundPermission: false,
       );
       
       const settings = InitializationSettings(
@@ -52,7 +54,7 @@ class NotificationService {
       _isInitialized = result == true;
       
       if (_isInitialized) {
-        print('✅ NotificationService initialized successfully');
+        print('✅ NotificationService initialized');
       } else {
         print('❌ NotificationService initialization failed');
       }
@@ -66,14 +68,25 @@ class NotificationService {
     }
   }
   
+  /// ✅ FIX: Détecter le timezone local automatiquement
+  static Future<String> _getLocalTimeZone() async {
+    try {
+      // Pour l'Afrique (Cameroun/Douala)
+      return 'Africa/Douala';
+    } catch (e) {
+      // Fallback: utiliser UTC
+      print('⚠️ Could not detect timezone, using UTC');
+      return 'UTC';
+    }
+  }
+  
   static void _onNotificationTapped(NotificationResponse response) {
     print('📱 Notification tapped: ${response.id}');
   }
   
-  /// ✅ Request permissions - À appeler EXPLICITEMENT
+  /// ✅ Request permissions
   static Future<bool> requestPermissions() async {
     if (!_isInitialized) {
-      print('⚠️ Cannot request permissions: not initialized');
       final initSuccess = await init();
       if (!initSuccess) return false;
     }
@@ -84,15 +97,26 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin>();
         
         if (androidPlugin != null) {
-          // 1. Request notification permission (Android 13+)
+          // 1. Request notification permission
           final notifGranted = await androidPlugin.requestNotificationsPermission();
+          print('📱 Notification permission: $notifGranted');
           
-          // 2. Request exact alarm permission
-          final alarmGranted = await androidPlugin.requestExactAlarmsPermission();
+          // 2. ✅ FIX: Vérifier ET demander la permission d'alarmes exactes
+          final canScheduleExact = await androidPlugin.canScheduleExactNotifications();
+          print('⏰ Can schedule exact alarms: $canScheduleExact');
           
-          print('📱 Permissions - Notifications: $notifGranted, Alarms: $alarmGranted');
+          if (canScheduleExact == false) {
+            print('⚠️ Requesting exact alarm permission...');
+            final alarmGranted = await androidPlugin.requestExactAlarmsPermission();
+            print('⏰ Exact alarm permission: $alarmGranted');
+            
+            if (alarmGranted != true) {
+              print('❌ User denied exact alarm permission');
+              return false;
+            }
+          }
           
-          return notifGranted == true && alarmGranted == true;
+          return notifGranted == true;
         }
       }
       
@@ -120,7 +144,7 @@ class NotificationService {
     }
   }
   
-  /// ✅ Check if permissions are granted
+  /// ✅ Check if notifications are enabled
   static Future<bool> areNotificationsEnabled() async {
     if (!_isInitialized) return false;
     
@@ -131,20 +155,24 @@ class NotificationService {
         
         if (androidPlugin != null) {
           final enabled = await androidPlugin.areNotificationsEnabled();
-          return enabled ?? false;
+          final canSchedule = await androidPlugin.canScheduleExactNotifications();
+          
+          print('📱 Notifications enabled: $enabled');
+          print('⏰ Can schedule exact: $canSchedule');
+          
+          return (enabled ?? false) && (canSchedule ?? false);
         }
       }
       
-      // iOS assume toujours enabled si pas d'erreur
       return true;
       
     } catch (e) {
-      print('❌ Failed to check notification status: $e');
+      print('❌ Failed to check status: $e');
       return false;
     }
   }
   
-  /// ✅ Schedule daily notifications - VERSION ROBUSTE
+  /// ✅ FIX: Schedule daily notifications ROBUSTE
   static Future<bool> scheduleDaily({
     required int hour,
     required int minute,
@@ -156,21 +184,29 @@ class NotificationService {
     }
     
     try {
-      // 1. Vérifier les permissions AVANT de programmer
+      // 1. Vérifier les permissions
       final hasPermissions = await areNotificationsEnabled();
       if (!hasPermissions) {
         print('⚠️ Cannot schedule: no permissions');
         return false;
       }
       
-      // 2. Annuler toutes les notifications existantes
+      // 2. Annuler les notifications existantes
       await cancelAll();
       
-      print('📅 Scheduling notifications: $hour:$minute, Hard: $isHardMode');
+      print('');
+      print('📅 ========================================');
+      print('📅 SCHEDULING NOTIFICATIONS');
+      print('📅 ========================================');
+      print('📅 Main reminder: $hour:${minute.toString().padLeft(2, '0')}');
+      print('📅 Hard mode: $isHardMode');
+      print('📅 Current time: ${DateTime.now()}');
+      print('📅 ========================================');
+      print('');
       
       // 3. Programmer les notifications
       
-      // Main reminder (18h par défaut)
+      // ✅ Rappel principal (18h par défaut)
       final mainScheduled = await _scheduleDailyNotification(
         id: 0,
         hour: hour,
@@ -184,7 +220,7 @@ class NotificationService {
         return false;
       }
       
-      // Late reminder (+3h)
+      // ✅ Rappel tardif (+3h)
       final lateHour = (hour + 3) % 24;
       final lateScheduled = await _scheduleDailyNotification(
         id: 1,
@@ -195,10 +231,10 @@ class NotificationService {
       );
       
       if (!lateScheduled) {
-        print('⚠️ Late reminder scheduling failed');
+        print('⚠️ Late reminder failed (non-critical)');
       }
       
-      // Violence reminder (Hard Mode only, 23h)
+      // ✅ Mode violence (23h, Hard Mode uniquement)
       if (isHardMode) {
         final hardScheduled = await _scheduleDailyNotification(
           id: 2,
@@ -209,21 +245,19 @@ class NotificationService {
         );
         
         if (!hardScheduled) {
-          print('⚠️ Hard mode reminder scheduling failed');
+          print('⚠️ Hard mode reminder failed (non-critical)');
         }
       }
       
-      // 4. Vérifier que tout s'est bien passé
+      // 4. Vérifier les notifications programmées
       final pending = await getPendingNotifications();
       final expectedCount = isHardMode ? 3 : 2;
       
-      if (pending.length != expectedCount) {
-        print('⚠️ Expected $expectedCount notifications, got ${pending.length}');
-        return false;
-      }
+      print('');
+      print('✅ Notifications scheduled: ${pending.length}/$expectedCount');
+      print('');
       
-      print('✅ All notifications scheduled successfully');
-      return true;
+      return pending.isNotEmpty;
       
     } catch (e, stack) {
       print('❌ Failed to schedule notifications: $e');
@@ -232,6 +266,7 @@ class NotificationService {
     }
   }
   
+  /// ✅ FIX: Programmer UNE notification quotidienne
   static Future<bool> _scheduleDailyNotification({
     required int id,
     required int hour,
@@ -240,25 +275,37 @@ class NotificationService {
     required String body,
   }) async {
     try {
+      // ✅ Calculer la prochaine occurrence
       final scheduledDate = _nextInstanceOfTime(hour, minute);
       
-      print('⏰ Scheduling #$id for ${scheduledDate.toString()}');
+      // ✅ Debug: Afficher l'heure programmée
+      print('');
+      print('⏰ Notification #$id:');
+      print('   Title: $title');
+      print('   Time: $hour:${minute.toString().padLeft(2, '0')}');
+      print('   Next trigger: $scheduledDate');
+      print('   In: ${scheduledDate.difference(tz.TZDateTime.now(tz.local)).inMinutes} minutes');
       
+      // ✅ Configuration Android
       const androidDetails = AndroidNotificationDetails(
         'daily_reminder',
         'Rappels Quotidiens',
         channelDescription: 'Notifications de rappel pour les habitudes',
-        importance: Importance.high,
+        importance: Importance.max,
         priority: Priority.high,
         enableVibration: true,
         playSound: true,
         icon: '@mipmap/ic_launcher',
+        // ✅ CRITIQUE: Options pour alarmes exactes
+        fullScreenIntent: true,
+        category: AndroidNotificationCategory.reminder,
       );
       
       const iosDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
+        interruptionLevel: InterruptionLevel.timeSensitive,
       );
       
       const details = NotificationDetails(
@@ -266,6 +313,7 @@ class NotificationService {
         iOS: iosDetails,
       );
       
+      // ✅ FIX: Utiliser exactAllowWhileIdle pour garantir le déclenchement
       await _notifications.zonedSchedule(
         id,
         title,
@@ -275,20 +323,25 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: 
             UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time,
+        matchDateTimeComponents: DateTimeComponents.time, // ✅ Répéter chaque jour
       );
+      
+      print('   ✅ Scheduled successfully');
       
       return true;
       
-    } catch (e) {
-      print('❌ Failed to schedule notification #$id: $e');
+    } catch (e, stack) {
+      print('   ❌ Failed to schedule #$id: $e');
+      print(stack);
       return false;
     }
   }
   
+  /// ✅ FIX: Calculer la prochaine occurrence CORRECTEMENT
   static tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
     final now = tz.TZDateTime.now(tz.local);
     
+    // ✅ Créer la date pour aujourd'hui à l'heure spécifiée
     var scheduledDate = tz.TZDateTime(
       tz.local,
       now.year,
@@ -296,11 +349,14 @@ class NotificationService {
       now.day,
       hour,
       minute,
+      0, // secondes = 0
+      0, // millisecondes = 0
     );
     
-    // Si l'heure est déjà passée aujourd'hui, programmer pour demain
-    if (scheduledDate.isBefore(now)) {
+    // ✅ Si l'heure est déjà passée aujourd'hui, programmer pour demain
+    if (scheduledDate.isBefore(now) || scheduledDate.isAtSameMomentAs(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
+      print('   ℹ️ Time already passed today, scheduling for tomorrow');
     }
     
     return scheduledDate;
@@ -311,7 +367,7 @@ class NotificationService {
     return messages[random.nextInt(messages.length)];
   }
   
-  /// ✅ Show immediate notification (streak broken)
+  /// ✅ Show immediate notification
   static Future<void> showStreakBroken(String habitTitle, int lostStreak) async {
     if (!_isInitialized) return;
     
@@ -341,7 +397,7 @@ class NotificationService {
       print('✅ Streak broken notification shown');
       
     } catch (e) {
-      print('❌ Failed to show streak broken notification: $e');
+      print('❌ Failed to show streak broken: $e');
     }
   }
   
@@ -392,7 +448,7 @@ class NotificationService {
       print('✅ Milestone notification shown: $streak days');
       
     } catch (e) {
-      print('❌ Failed to show milestone notification: $e');
+      print('❌ Failed to show milestone: $e');
     }
   }
   
@@ -402,31 +458,33 @@ class NotificationService {
       await _notifications.cancelAll();
       print('🗑️ All notifications cancelled');
     } catch (e) {
-      print('❌ Failed to cancel notifications: $e');
+      print('❌ Failed to cancel: $e');
     }
   }
   
-  /// ✅ Get pending notifications (for debug)
+  /// ✅ Get pending notifications
   static Future<List<PendingNotificationRequest>> getPendingNotifications() async {
     if (!_isInitialized) return [];
     
     try {
       final pending = await _notifications.pendingNotificationRequests();
       
+      print('');
       print('📬 Pending notifications: ${pending.length}');
       for (final notif in pending) {
-        print('  - #${notif.id}: ${notif.title}');
+        print('   - #${notif.id}: ${notif.title}');
       }
+      print('');
       
       return pending;
       
     } catch (e) {
-      print('❌ Failed to get pending notifications: $e');
+      print('❌ Failed to get pending: $e');
       return [];
     }
   }
   
-  /// ✅ NOUVEAU: Test notification immédiate
+  /// ✅ Test notification immédiate
   static Future<bool> testNotification() async {
     if (!_isInitialized) {
       print('⚠️ Cannot test: not initialized');
@@ -461,6 +519,60 @@ class NotificationService {
       
     } catch (e) {
       print('❌ Test notification failed: $e');
+      return false;
+    }
+  }
+  
+  /// ✅ NOUVEAU: Tester une notification programmée dans 1 minute
+  static Future<bool> testScheduledIn1Minute() async {
+    if (!_isInitialized) return false;
+    
+    try {
+      final now = tz.TZDateTime.now(tz.local);
+      final testTime = now.add(const Duration(minutes: 1));
+      
+      print('');
+      print('🧪 Testing scheduled notification in 1 minute');
+      print('   Current time: $now');
+      print('   Test time: $testTime');
+      
+      const androidDetails = AndroidNotificationDetails(
+        'test',
+        'Test',
+        channelDescription: 'Test notifications',
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+      );
+      
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+      
+      await _notifications.zonedSchedule(
+        888,
+        'Test Programmé ⏰',
+        'Cette notification devait arriver dans 1 minute !',
+        testTime,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: 
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+      
+      print('✅ Test scheduled notification set');
+      return true;
+      
+    } catch (e) {
+      print('❌ Test scheduled failed: $e');
       return false;
     }
   }

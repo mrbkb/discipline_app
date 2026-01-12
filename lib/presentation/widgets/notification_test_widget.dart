@@ -1,18 +1,21 @@
 // ============================================
-// FICHIER CORRIGÉ : lib/presentation/widgets/notification_test_widget.dart
+// FICHIER FINAL : lib/presentation/widgets/notification_test_widget.dart
+// AVEC: Affichage des heures configurées
 // ============================================
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/notification_service.dart';
+import '../providers/user_provider.dart';
 
-class NotificationTestWidget extends StatefulWidget {
+class NotificationTestWidget extends ConsumerStatefulWidget {
   const NotificationTestWidget({super.key});
 
   @override
-  State<NotificationTestWidget> createState() => _NotificationTestWidgetState();
+  ConsumerState<NotificationTestWidget> createState() => _NotificationTestWidgetState();
 }
 
-class _NotificationTestWidgetState extends State<NotificationTestWidget> {
+class _NotificationTestWidgetState extends ConsumerState<NotificationTestWidget> {
   String _status = 'Idle';
   List<String> _pendingNotifs = [];
 
@@ -22,9 +25,8 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
     _checkStatus();
   }
 
-  /// ✅ FIX: Toujours vérifier mounted avant setState()
   Future<void> _checkStatus() async {
-    if (!mounted) return; // ✅ Check avant de commencer
+    if (!mounted) return;
     
     setState(() => _status = 'Checking...');
     
@@ -32,7 +34,6 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
       final enabled = await NotificationService.areNotificationsEnabled();
       final pending = await NotificationService.getPendingNotifications();
       
-      // ✅ FIX CRITIQUE: Vérifier mounted APRÈS les appels async
       if (!mounted) return;
       
       setState(() {
@@ -43,7 +44,7 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
       });
       
     } catch (e) {
-      if (!mounted) return; // ✅ Check avant setState()
+      if (!mounted) return;
       setState(() => _status = '❌ Error: $e');
     }
   }
@@ -52,9 +53,9 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
     if (!mounted) return;
     
     try {
-      await NotificationService.showStreakMilestone('Test', 7);
+      await NotificationService.testNotification();
       
-      if (!mounted) return; // ✅ Check avant d'utiliser context
+      if (!mounted) return;
       
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -64,8 +65,6 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
         ),
       );
     } catch (e) {
-      print('❌ Test immediate failed: $e');
-      
       if (!mounted) return;
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,34 +76,91 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
     }
   }
 
-  Future<void> _testScheduled() async {
+  Future<void> _test1Minute() async {
     if (!mounted) return;
     
     try {
-      final now = DateTime.now();
-      
-      await NotificationService.scheduleDaily(
-        hour: now.hour,
-        minute: now.minute,
-        isHardMode: false,
-      );
+      await NotificationService.testScheduledIn1Minute();
       
       if (!mounted) return;
       
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Notifications programmées'),
-          backgroundColor: AppColors.successGreen,
-          duration: Duration(seconds: 2),
+          content: Text('⏰ Notification programmée dans 1 minute !'),
+          backgroundColor: AppColors.lavaOrange,
+          duration: Duration(seconds: 3),
         ),
       );
       
-      // Refresh status
       await _checkStatus();
       
     } catch (e) {
-      print('❌ Test scheduled failed: $e');
+      if (!mounted) return;
       
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Erreur: $e'),
+          backgroundColor: AppColors.dangerRed,
+        ),
+      );
+    }
+  }
+
+  /// ✅ NOUVEAU: Tester avec les heures RÉELLES du UserModel
+  Future<void> _testWithUserSettings() async {
+    if (!mounted) return;
+    
+    final user = ref.read(userProvider);
+    
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ Aucun utilisateur trouvé'),
+          backgroundColor: AppColors.dangerRed,
+        ),
+      );
+      return;
+    }
+    
+    try {
+      print('');
+      print('🧪 Testing with user settings:');
+      print('   Reminder: ${user.reminderTime}');
+      print('   Hard mode: ${user.isHardMode}');
+      print('   Notifications enabled: ${user.notificationsEnabled}');
+      
+      final scheduled = await NotificationService.scheduleDaily(
+        hour: user.reminderHour,
+        minute: user.reminderMinute,
+        isHardMode: user.isHardMode,
+      );
+      
+      if (!mounted) return;
+      
+      if (scheduled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ Notifications programmées avec tes réglages:\n'
+              'Rappel: ${user.reminderTime}\n'
+              'Hard mode: ${user.isHardMode ? "ON" : "OFF"}'
+            ),
+            backgroundColor: AppColors.successGreen,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Échec de la programmation'),
+            backgroundColor: AppColors.dangerRed,
+          ),
+        );
+      }
+      
+      await _checkStatus();
+      
+    } catch (e) {
       if (!mounted) return;
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -132,7 +188,6 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
         ),
       );
       
-      // Refresh status
       await _checkStatus();
       
     } catch (e) {
@@ -142,6 +197,8 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(userProvider);
+    
     return Container(
       margin: const EdgeInsets.all(24),
       padding: const EdgeInsets.all(20),
@@ -149,12 +206,12 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.lavaOrange.withValues(alpha: 0.3),
+          color: AppColors.lavaOrange.withOpacity(0.3),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // ✅ Éviter débordement
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Header
           Row(
@@ -184,6 +241,46 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
           
           const SizedBox(height: 16),
           
+          // ✅ NOUVEAU: User settings info
+          if (user != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.lavaOrange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.lavaOrange.withOpacity(0.3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '⚙️ Tes réglages actuels:',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.lavaOrange,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '• Rappel principal: ${user.reminderTime}\n'
+                    '• Rappel tardif: ${user.lateReminderTime}\n'
+                    '• Hard mode: ${user.isHardMode ? "ON 💀" : "OFF"}\n'
+                    '• Notifications: ${user.notificationsEnabled ? "ON 🔔" : "OFF 🔕"}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          
           // Status
           Container(
             padding: const EdgeInsets.all(12),
@@ -191,21 +288,34 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
               color: AppColors.deadGray,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Status: ',
-                  style: TextStyle(fontSize: 14),
-                ),
-                Expanded(
-                  child: Text(
-                    _status,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.lavaOrange,
+                Row(
+                  children: [
+                    const Text(
+                      'Status: ',
+                      style: TextStyle(fontSize: 14),
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    Expanded(
+                      child: Text(
+                        _status,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.lavaOrange,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Heure actuelle: ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -250,7 +360,73 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
               ),
             ),
             const SizedBox(height: 16),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.warningYellow.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber,
+                    color: AppColors.warningYellow,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Aucune notification programmée',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.warningYellow,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
           ],
+          
+          // Instructions
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.blue.withOpacity(0.3),
+              ),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '💡 Comment tester:',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blue,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '1. "Test Immédiat" → Notification instantanée\n'
+                  '2. "Test 1min" → Notification dans 1 minute\n'
+                  '3. "Test Réglages" → Utilise TES heures configurées',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 16),
           
           // Test buttons
           const Text(
@@ -275,10 +451,18 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
               ),
               
               _TestButton(
-                onPressed: _testScheduled,
-                icon: Icons.schedule,
-                label: 'Programmer',
+                onPressed: _test1Minute,
+                icon: Icons.timer,
+                label: 'Test 1min',
                 color: AppColors.lavaOrange,
+              ),
+              
+              // ✅ NOUVEAU: Bouton pour tester avec réglages user
+              _TestButton(
+                onPressed: _testWithUserSettings,
+                icon: Icons.settings,
+                label: 'Test Réglages',
+                color: Colors.blue,
               ),
               
               _TestButton(
@@ -295,9 +479,6 @@ class _NotificationTestWidgetState extends State<NotificationTestWidget> {
   }
 }
 
-// ============================================
-// Widget helper pour les boutons de test
-// ============================================
 class _TestButton extends StatelessWidget {
   final VoidCallback onPressed;
   final IconData icon;
@@ -332,24 +513,3 @@ class _TestButton extends StatelessWidget {
     );
   }
 }
-
-// ============================================
-// COMMENT L'UTILISER DANS settings_screen.dart
-// ============================================
-/*
-
-1. Importer le widget :
-   import '../../widgets/notification_test_widget.dart';
-
-2. Ajouter dans le CustomScrollView, AVANT "About Section" :
-
-   // DEBUG: Notification testing
-   const SliverToBoxAdapter(
-     child: NotificationTestWidget(),
-   ),
-
-3. Pour RETIRER le widget plus tard (production) :
-   - Simplement commenter ou supprimer le SliverToBoxAdapter
-   - Ou entourer d'une condition : if (kDebugMode) ...
-
-*/

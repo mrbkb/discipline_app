@@ -1,5 +1,6 @@
 // ============================================
-// FICHIER MODIFIÉ : lib/presentation/providers/user_provider.dart
+// FICHIER CORRIGÉ : lib/presentation/providers/user_provider.dart
+// FIX: Notifications dans les réglages normaux
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/user_model.dart';
@@ -13,7 +14,7 @@ final userRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository();
 });
 
-// ✅ StateNotifierProvider
+// StateNotifierProvider
 final userProvider = StateNotifierProvider<UserNotifier, UserModel?>((ref) {
   final repository = ref.watch(userRepositoryProvider);
   return UserNotifier(repository);
@@ -50,7 +51,6 @@ final hasBackedUpProvider = Provider<bool>((ref) {
   return user?.hasBackedUp ?? false;
 });
 
-// ✅ NOUVEAU: Provider pour savoir si l'user est en mode local
 final isLocalModeProvider = Provider<bool>((ref) {
   final user = ref.watch(userProvider);
   return user?.firebaseUid == null;
@@ -68,13 +68,11 @@ class UserNotifier extends StateNotifier<UserModel?> {
   Future<void> _loadUser() async {
     state = _repository.getUser();
     
-    // ✅ Tenter de se connecter à Firebase si pas encore fait
     if (state != null && state!.firebaseUid == null) {
       await _tryConnectToFirebase();
     }
   }
   
-  // ✅ Forcer la notification de Riverpod
   void _notifyStateChange() {
     if (state != null) {
       print('🔔 [UserNotifier] Forcing state notification');
@@ -88,21 +86,17 @@ class UserNotifier extends StateNotifier<UserModel?> {
   
   // ========== FIREBASE AUTH ==========
   
-  /// ✅ NOUVEAU: Tenter de se connecter à Firebase (mode différé)
   Future<void> _tryConnectToFirebase() async {
     try {
-      // Tenter la connexion
       final firebaseUser = await FirebaseService.tryConnectIfOffline();
       
       if (firebaseUser != null) {
-        // Migrer l'utilisateur local vers Firebase
         await _repository.migrateToFirebase(firebaseUser.uid);
         await _loadUser();
         _notifyStateChange();
         
         print('✅ [UserNotifier] User migrated to Firebase');
         
-        // Déclencher une sync automatique
         await _autoSyncAfterConnection();
       }
     } catch (e) {
@@ -110,17 +104,14 @@ class UserNotifier extends StateNotifier<UserModel?> {
     }
   }
   
-  /// ✅ NOUVEAU: Sync automatique après connexion
   Future<void> _autoSyncAfterConnection() async {
     try {
-      // TODO: Trigger auto-sync via SyncProvider
       print('🔄 [UserNotifier] Auto-sync triggered');
     } catch (e) {
       print('❌ [UserNotifier] Auto-sync failed: $e');
     }
   }
   
-  /// ✅ NOUVEAU: Forcer la reconnexion à Firebase (appelé manuellement)
   Future<bool> forceConnectToFirebase() async {
     try {
       final firebaseUser = await FirebaseService.tryConnectIfOffline();
@@ -167,23 +158,19 @@ class UserNotifier extends StateNotifier<UserModel?> {
   
   // ========== CREATE ==========
   
-  /// ✅ MODIFIÉ: Créer un user même sans Firebase
   Future<void> createUser({
     required String nickname,
   }) async {
-    // Tenter de se connecter à Firebase
     final firebaseUser = await FirebaseService.initializeAuth();
     
-    // Créer l'user (avec ou sans Firebase)
     final user = await _repository.createUser(
       nickname: nickname,
-      firebaseUid: firebaseUser?.uid, // null si offline
+      firebaseUid: firebaseUser?.uid,
       isAnonymous: firebaseUser?.isAnonymous ?? true,
     );
     
     state = user;
     
-    // Si en mode local, afficher un message
     if (firebaseUser == null) {
       print('📱 [UserNotifier] User created in LOCAL mode (offline)');
     } else {
@@ -201,32 +188,71 @@ class UserNotifier extends StateNotifier<UserModel?> {
     _notifyStateChange();
   }
   
+  /// ✅ FIX CRITIQUE: toggleHardMode avec reprogrammation des notifications
   Future<void> toggleHardMode() async {
     try {
+      print('');
+      print('🔵 ========================================');
       print('🔵 [UserNotifier] toggleHardMode');
+      print('🔵 ========================================');
       
       await _repository.toggleHardMode();
       state = _repository.getUser();
       _notifyStateChange();
       
       final user = state;
-      if (user != null && user.notificationsEnabled) {
-        try {
-          await NotificationService.scheduleDaily(
-            hour: user.reminderHour,
-            minute: user.reminderMinute,
-            isHardMode: user.isHardMode,
-          );
-        } catch (e) {
-          print('❌ Error scheduling notifications: $e');
+      if (user != null) {
+        print('   Hard mode: ${user.isHardMode}');
+        print('   Notifications enabled: ${user.notificationsEnabled}');
+        
+        // ✅ FIX: Reprogrammer les notifications si activées
+        if (user.notificationsEnabled) {
+          print('   → Rescheduling notifications...');
+          
+          try {
+            // ✅ Vérifier d'abord les permissions
+            final hasPermissions = await NotificationService.areNotificationsEnabled();
+            
+            if (!hasPermissions) {
+              print('   ⚠️ No permissions, requesting...');
+              final granted = await NotificationService.requestPermissions();
+              
+              if (!granted) {
+                print('   ❌ Permissions denied, cannot schedule');
+                return;
+              }
+            }
+            
+            // ✅ Programmer les notifications avec le nouveau mode
+            final scheduled = await NotificationService.scheduleDaily(
+              hour: user.reminderHour,
+              minute: user.reminderMinute,
+              isHardMode: user.isHardMode,
+            );
+            
+            if (scheduled) {
+              print('   ✅ Notifications rescheduled successfully');
+            } else {
+              print('   ❌ Failed to reschedule notifications');
+            }
+            
+          } catch (e) {
+            print('   ❌ Error rescheduling notifications: $e');
+          }
+        } else {
+          print('   ℹ️ Notifications disabled, skipping reschedule');
         }
       }
       
+      // Analytics
       try {
         await AnalyticsService.logHardModeToggled(state!.isHardMode);
       } catch (e) {
-        print('❌ Error logging hard mode toggle: $e');
+        print('   ❌ Error logging hard mode toggle: $e');
       }
+      
+      print('🔵 ========================================');
+      print('');
       
     } catch (e) {
       print('❌ Error in toggleHardMode: $e');
@@ -234,11 +260,15 @@ class UserNotifier extends StateNotifier<UserModel?> {
     }
   }
   
+  /// ✅ FIX CRITIQUE: updateReminderTimes avec reprogrammation
   Future<void> updateReminderTimes({
     String? reminder,
     String? lateReminder,
   }) async {
+    print('');
+    print('🔵 ========================================');
     print('🔵 [UserNotifier] updateReminderTimes');
+    print('🔵 ========================================');
     
     await _repository.updateReminderTimes(
       reminder: reminder,
@@ -249,21 +279,60 @@ class UserNotifier extends StateNotifier<UserModel?> {
     _notifyStateChange();
     
     final user = state;
-    if (user != null && user.notificationsEnabled) {
-      try {
-        await NotificationService.scheduleDaily(
-          hour: user.reminderHour,
-          minute: user.reminderMinute,
-          isHardMode: user.isHardMode,
-        );
-      } catch (e) {
-        print('❌ Error rescheduling notifications: $e');
+    if (user != null) {
+      print('   New reminder: ${user.reminderTime}');
+      print('   Late reminder: ${user.lateReminderTime}');
+      print('   Notifications enabled: ${user.notificationsEnabled}');
+      
+      // ✅ FIX: Reprogrammer les notifications si activées
+      if (user.notificationsEnabled) {
+        print('   → Rescheduling notifications...');
+        
+        try {
+          // ✅ Vérifier les permissions
+          final hasPermissions = await NotificationService.areNotificationsEnabled();
+          
+          if (!hasPermissions) {
+            print('   ⚠️ No permissions, requesting...');
+            final granted = await NotificationService.requestPermissions();
+            
+            if (!granted) {
+              print('   ❌ Permissions denied, cannot schedule');
+              return;
+            }
+          }
+          
+          // ✅ Programmer avec les nouvelles heures
+          final scheduled = await NotificationService.scheduleDaily(
+            hour: user.reminderHour,
+            minute: user.reminderMinute,
+            isHardMode: user.isHardMode,
+          );
+          
+          if (scheduled) {
+            print('   ✅ Notifications rescheduled successfully');
+          } else {
+            print('   ❌ Failed to reschedule notifications');
+          }
+          
+        } catch (e) {
+          print('   ❌ Error rescheduling notifications: $e');
+        }
+      } else {
+        print('   ℹ️ Notifications disabled, skipping reschedule');
       }
     }
+    
+    print('🔵 ========================================');
+    print('');
   }
   
+  /// ✅ FIX CRITIQUE: toggleNotifications avec gestion complète
   Future<void> toggleNotifications() async {
+    print('');
+    print('🔵 ========================================');
     print('🔵 [UserNotifier] toggleNotifications');
+    print('🔵 ========================================');
     
     await _repository.toggleNotifications();
     state = _repository.getUser();
@@ -271,24 +340,65 @@ class UserNotifier extends StateNotifier<UserModel?> {
     
     final user = state;
     if (user != null) {
+      print('   Notifications enabled: ${user.notificationsEnabled}');
+      
       try {
         if (user.notificationsEnabled) {
-          await NotificationService.scheduleDaily(
+          print('   → Enabling notifications...');
+          
+          // ✅ Demander les permissions d'abord
+          final hasPermissions = await NotificationService.areNotificationsEnabled();
+          
+          if (!hasPermissions) {
+            print('   ⚠️ No permissions, requesting...');
+            final granted = await NotificationService.requestPermissions();
+            
+            if (!granted) {
+              print('   ❌ Permissions denied');
+              
+              // ✅ FIX: Re-désactiver si permissions refusées
+              await _repository.toggleNotifications();
+              state = _repository.getUser();
+              _notifyStateChange();
+              
+              return;
+            }
+          }
+          
+          // ✅ Programmer les notifications
+          final scheduled = await NotificationService.scheduleDaily(
             hour: user.reminderHour,
             minute: user.reminderMinute,
             isHardMode: user.isHardMode,
           );
+          
+          if (scheduled) {
+            print('   ✅ Notifications scheduled successfully');
+          } else {
+            print('   ❌ Failed to schedule notifications');
+          }
+          
         } else {
+          print('   → Disabling notifications...');
           await NotificationService.cancelAll();
+          print('   ✅ Notifications cancelled');
         }
+        
       } catch (e) {
-        print('❌ Error toggling notifications: $e');
+        print('   ❌ Error toggling notifications: $e');
       }
     }
+    
+    print('🔵 ========================================');
+    print('');
   }
   
+  /// ✅ FIX: completeOnboarding avec programmation initiale
   Future<void> completeOnboarding() async {
+    print('');
+    print('🔵 ========================================');
     print('🔵 [UserNotifier] completeOnboarding');
+    print('🔵 ========================================');
     
     await _repository.completeOnboarding();
     state = _repository.getUser();
@@ -296,16 +406,35 @@ class UserNotifier extends StateNotifier<UserModel?> {
     
     final user = state;
     if (user != null && user.notificationsEnabled) {
+      print('   → Scheduling initial notifications...');
+      
       try {
-        await NotificationService.scheduleDaily(
-          hour: user.reminderHour,
-          minute: user.reminderMinute,
-          isHardMode: user.isHardMode,
-        );
+        // ✅ Vérifier les permissions
+        final hasPermissions = await NotificationService.areNotificationsEnabled();
+        
+        if (hasPermissions) {
+          final scheduled = await NotificationService.scheduleDaily(
+            hour: user.reminderHour,
+            minute: user.reminderMinute,
+            isHardMode: user.isHardMode,
+          );
+          
+          if (scheduled) {
+            print('   ✅ Initial notifications scheduled');
+          } else {
+            print('   ❌ Failed to schedule initial notifications');
+          }
+        } else {
+          print('   ⚠️ No permissions, skipping initial schedule');
+        }
+        
       } catch (e) {
-        print('❌ Error scheduling initial notifications: $e');
+        print('   ❌ Error scheduling initial notifications: $e');
       }
     }
+    
+    print('🔵 ========================================');
+    print('');
   }
   
   Future<void> markBackedUp() async {

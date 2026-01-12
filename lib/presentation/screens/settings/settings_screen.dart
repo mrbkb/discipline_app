@@ -6,9 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../providers/stats_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/sync_provider.dart';
 import '../../widgets/notification_test_widget.dart';
+
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -20,6 +22,7 @@ class SettingsScreen extends ConsumerWidget {
     final user = ref.watch(userProvider);
     final syncState = ref.watch(syncNotifierProvider);
     final isOnline = ref.watch(isOnlineProvider);
+    final totalActiveDays = ref.watch(totalActiveDaysProvider);
 
     if (user == null) {
       return const Center(child: CircularProgressIndicator());
@@ -95,13 +98,13 @@ class SettingsScreen extends ConsumerWidget {
   children: [
     _ProfileStat(
       icon: Icons.check_circle,
-      value: '${user.totalHabitsCreated}', // ✅ Nombre total d'habitudes créées
+      value: '${user.totalHabitsCreated}',
       label: 'Habitudes',
     ),
     const SizedBox(width: 24),
     _ProfileStat(
       icon: Icons.calendar_today,
-      value: '${user.totalDaysActive}', // ✅ Nombre de jours actifs
+      value: '$totalActiveDays', // ✅ Utilise le provider stats
       label: 'Jours actifs',
     ),
   ],

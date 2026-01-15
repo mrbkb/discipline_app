@@ -1,24 +1,20 @@
 // ============================================
-// FICHIER FINAL CORRIGÉ : lib/presentation/screens/settings/settings_screen.dart
+// FICHIER PRODUCTION : lib/presentation/screens/settings/settings_screen.dart
+// ✅ Widget de test RETIRÉ
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
-import '../../../core/services/analytics_service.dart';
 import '../../providers/stats_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/sync_provider.dart';
-import '../../widgets/notification_test_widget.dart';
-
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // ✅ FIX CRITIQUE: Watch user DIRECTEMENT dans le build
-    // Pas de variable locale qui ne se rafraîchit pas !
     final user = ref.watch(userProvider);
     final syncState = ref.watch(syncNotifierProvider);
     final isOnline = ref.watch(isOnlineProvider);
@@ -83,7 +79,7 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // ✅ Nickname - Se met à jour automatiquement
+                  // Nickname
                   Text(
                     user.nickname,
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
@@ -94,21 +90,21 @@ class SettingsScreen extends ConsumerWidget {
 
                   // Stats
                   Row(
-  mainAxisAlignment: MainAxisAlignment.center,
-  children: [
-    _ProfileStat(
-      icon: Icons.check_circle,
-      value: '${user.totalHabitsCreated}',
-      label: 'Habitudes',
-    ),
-    const SizedBox(width: 24),
-    _ProfileStat(
-      icon: Icons.calendar_today,
-      value: '$totalActiveDays', // ✅ Utilise le provider stats
-      label: 'Jours actifs',
-    ),
-  ],
-),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _ProfileStat(
+                        icon: Icons.check_circle,
+                        value: '${user.totalHabitsCreated}',
+                        label: 'Habitudes',
+                      ),
+                      const SizedBox(width: 24),
+                      _ProfileStat(
+                        icon: Icons.calendar_today,
+                        value: '$totalActiveDays',
+                        label: 'Jours actifs',
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
 
                   // Edit nickname button
@@ -155,14 +151,14 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 child: Column(
                   children: [
-                    // ✅ Hard Mode - Valeur directement depuis user
+                    // Hard Mode
                     _SettingsTile(
                       icon: Icons.whatshot,
                       iconColor: AppColors.dangerRed,
                       title: AppStrings.settingsHardMode,
                       subtitle: AppStrings.settingsHardModeDesc,
                       trailing: Switch(
-                        value: user.isHardMode, // ✅ Directement depuis user
+                        value: user.isHardMode,
                         onChanged: (value) async {
                           await ref.read(userProvider.notifier).toggleHardMode();
                         },
@@ -170,14 +166,14 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     const Divider(height: 1, color: AppColors.divider),
 
-                    // ✅ Notifications - Valeur directement depuis user
+                    // Notifications
                     _SettingsTile(
                       icon: Icons.notifications,
                       iconColor: AppColors.lavaOrange,
                       title: AppStrings.settingsNotifications,
-                      subtitle: user.notificationsEnabled ? 'Activées' : 'Désactivées', // ✅ Directement depuis user
+                      subtitle: user.notificationsEnabled ? 'Activées' : 'Désactivées',
                       trailing: Switch(
-                        value: user.notificationsEnabled, // ✅ Directement depuis user
+                        value: user.notificationsEnabled,
                         onChanged: (value) async {
                           await ref.read(userProvider.notifier).toggleNotifications();
                         },
@@ -185,12 +181,12 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     const Divider(height: 1, color: AppColors.divider),
 
-                    // ✅ Reminder Time - Valeur directement depuis user
+                    // Reminder Time
                     _SettingsTile(
                       icon: Icons.access_time,
                       iconColor: Colors.blue,
                       title: AppStrings.settingsReminderTime,
-                      subtitle: user.reminderTime, // ✅ Directement depuis user
+                      subtitle: user.reminderTime,
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _showTimePickerDialog(
                         context,
@@ -201,12 +197,12 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     const Divider(height: 1, color: AppColors.divider),
 
-                    // ✅ Late Reminder - Valeur directement depuis user
+                    // Late Reminder
                     _SettingsTile(
                       icon: Icons.alarm,
                       iconColor: AppColors.warningYellow,
                       title: AppStrings.settingsLateReminder,
-                      subtitle: user.lateReminderTime, // ✅ Directement depuis user
+                      subtitle: user.lateReminderTime,
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _showTimePickerDialog(
                         context,
@@ -253,12 +249,12 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 child: Column(
                   children: [
-                    // ✅ Backup button - Valeur directement depuis user
+                    // Backup button
                     _SettingsTile(
                       icon: Icons.cloud_upload,
                       iconColor: AppColors.successGreen,
                       title: AppStrings.settingsBackup,
-                      subtitle: user.hasBackedUp // ✅ Directement depuis user
+                      subtitle: user.hasBackedUp
                           ? 'Dernière sauvegarde: ${_formatLastSync(user.lastSyncAt)}'
                           : 'Jamais sauvegardé',
                       trailing: syncState.status == SyncStatus.syncing
@@ -293,155 +289,148 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
-// ============================================
-// WIDGET À AJOUTER DANS settings_screen.dart
-// Après la section "Backup Items"
-// ============================================
-
-// Mode local warning
-if (ref.watch(isLocalModeProvider))
-  SliverToBoxAdapter(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.warningYellow.withValues(alpha: 0.2),
-              AppColors.lavaOrange.withValues(alpha: 0.1),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppColors.warningYellow.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
+          // Mode local warning
+          if (ref.watch(isLocalModeProvider))
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: AppColors.warningYellow.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.warningYellow.withValues(alpha: 0.2),
+                        AppColors.lavaOrange.withValues(alpha: 0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.warningYellow.withValues(alpha: 0.3),
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.cloud_off,
-                    color: AppColors.warningYellow,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Mode Local',
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.warningYellow.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.cloud_off,
+                              color: AppColors.warningYellow,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Mode Local',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.warningYellow,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Données stockées localement uniquement',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Tu as créé ton compte sans connexion Internet. Tes données sont sauvegardées localement et seront automatiquement synchronisées avec le cloud dès que tu seras connecté.',
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.warningYellow,
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                          height: 1.5,
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Données stockées localement uniquement',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: isOnline
+                              ? () async {
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (context) => const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  );
+                                  
+                                  final success = await ref
+                                      .read(userProvider.notifier)
+                                      .forceConnectToFirebase();
+                                  
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+                                    
+                                    if (success) {
+                                      await ref
+                                          .read(syncNotifierProvider.notifier)
+                                          .backupToCloud();
+                                      
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('✅ Connecté et synchronisé !'),
+                                          backgroundColor: AppColors.successGreen,
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('❌ Connexion échouée'),
+                                          backgroundColor: AppColors.dangerRed,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.lavaOrange,
+                            disabledBackgroundColor: AppColors.deadGray,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: Icon(
+                            isOnline ? Icons.cloud_upload : Icons.wifi_off,
+                            size: 20,
+                          ),
+                          label: Text(
+                            isOnline
+                                ? 'Se connecter et synchroniser'
+                                : 'Connexion requise',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Tu as créé ton compte sans connexion Internet. Tes données sont sauvegardées localement et seront automatiquement synchronisées avec le cloud dès que tu seras connecté.',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                height: 1.5,
               ),
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: isOnline
-                    ? () async {
-                        // Afficher un loader
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (context) => const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                        
-                        // Tenter la connexion
-                        final success = await ref
-                            .read(userProvider.notifier)
-                            .forceConnectToFirebase();
-                        
-                        if (context.mounted) {
-                          Navigator.pop(context); // Fermer le loader
-                          
-                          if (success) {
-                            // Déclencher la sync
-                            await ref
-                                .read(syncNotifierProvider.notifier)
-                                .backupToCloud();
-                            
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('✅ Connecté et synchronisé !'),
-                                backgroundColor: AppColors.successGreen,
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('❌ Connexion échouée'),
-                                backgroundColor: AppColors.dangerRed,
-                              ),
-                            );
-                          }
-                        }
-                      }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.lavaOrange,
-                  disabledBackgroundColor: AppColors.deadGray,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: Icon(
-                  isOnline ? Icons.cloud_upload : Icons.wifi_off,
-                  size: 20,
-                ),
-                label: Text(
-                  isOnline
-                      ? 'Se connecter et synchroniser'
-                      : 'Connexion requise',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  ),
+
           // Connection status
           if (!isOnline)
             SliverToBoxAdapter(
@@ -552,7 +541,7 @@ if (ref.watch(isLocalModeProvider))
                       icon: Icons.info,
                       iconColor: Colors.blue,
                       title: 'Version',
-                      subtitle: '1.0.0 (MVP)',
+                      subtitle: '1.0.0',
                       trailing: SizedBox.shrink(),
                     ),
                     Divider(height: 1, color: AppColors.divider),
@@ -568,10 +557,6 @@ if (ref.watch(isLocalModeProvider))
               ),
             ),
           ),
-          // DEBUG: Notification testing
-const SliverToBoxAdapter(
-  child: NotificationTestWidget(),
-),
 
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
@@ -591,7 +576,6 @@ const SliverToBoxAdapter(
     return 'Il y a ${diff.inDays}j';
   }
 
-  // ✅ FIX: Passer le ref pour pouvoir accéder au notifier
   void _showEditNicknameDialog(BuildContext context, WidgetRef ref, String currentNickname) {
     final controller = TextEditingController(text: currentNickname);
 
@@ -630,7 +614,6 @@ const SliverToBoxAdapter(
     );
   }
   
-  // ✅ FIX: Passer le ref pour pouvoir accéder au notifier
   void _showTimePickerDialog(
     BuildContext context,
     WidgetRef ref,

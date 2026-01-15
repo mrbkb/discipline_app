@@ -9,7 +9,6 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../providers/habits_provider.dart';
 import '../../providers/user_provider.dart';
-import '../home/home_screen.dart';
 import 'notification_permission_screen.dart';
 
 class HabitsSelectionScreen extends ConsumerStatefulWidget {

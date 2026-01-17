@@ -1,15 +1,16 @@
 // ============================================
-// NOUVEAU FICHIER : lib/presentation/screens/onboarding/notification_permission_screen.dart
+// FICHIER MIS À JOUR : lib/presentation/screens/onboarding/notification_permission_screen.dart
+// ✅ Utilise AlarmNotificationService au lieu de NotificationService
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/services/notification_service.dart';
+import '../../../core/services/alarm_notification_service.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../../core/services/logger_service.dart';
+import '../../providers/user_provider.dart';
 import '../home/home_screen.dart';
 
-/// ✅ Écran à afficher APRÈS habits_selection_screen
-/// Pour demander les permissions notifications
 class NotificationPermissionScreen extends ConsumerStatefulWidget {
   const NotificationPermissionScreen({super.key});
 
@@ -31,7 +32,7 @@ class _NotificationPermissionScreenState
   }
 
   Future<void> _checkPermissions() async {
-    final granted = await NotificationService.areNotificationsEnabled();
+    final granted = await AlarmNotificationService.areNotificationsEnabled();
     if (mounted) {
       setState(() => _permissionsGranted = granted);
     }
@@ -42,7 +43,7 @@ class _NotificationPermissionScreenState
     
     try {
       // 1. Demander les permissions
-      final granted = await NotificationService.requestPermissions();
+      final granted = await AlarmNotificationService.requestPermissions();
       
       if (!granted) {
         if (mounted) {
@@ -60,23 +61,33 @@ class _NotificationPermissionScreenState
       }
       
       // 2. Tester une notification immédiate
-      await NotificationService.testNotification();
+      await AlarmNotificationService.testNotification();
       
-      // 3. Programmer les notifications quotidiennes
-      final scheduled = await NotificationService.scheduleDaily(
-        hour: 18,
-        minute: 0,
-        isHardMode: false,
-      );
+      // 3. Programmer les notifications quotidiennes depuis UserModel
+      final user = ref.read(userProvider);
       
-      if (!scheduled) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('⚠️ Erreur lors de la programmation'),
-              backgroundColor: AppColors.warningYellow,
-            ),
-          );
+      if (user != null) {
+        LoggerService.info('Scheduling from user settings', tag: 'NOTIF_PERMISSION', data: {
+          'reminderHour': user.reminderHour,
+          'reminderMinute': user.reminderMinute,
+          'lateReminderHour': user.lateReminderHour,
+          'lateReminderMinute': user.lateReminderMinute,
+          'isHardMode': user.isHardMode,
+        });
+        
+        final scheduled = await AlarmNotificationService.scheduleDailyFromUser(user);
+        
+        if (!scheduled) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('⚠️ Erreur lors de la programmation'),
+                backgroundColor: AppColors.warningYellow,
+              ),
+            );
+          }
+        } else {
+          LoggerService.info('Notifications scheduled successfully', tag: 'NOTIF_PERMISSION');
         }
       }
       
@@ -102,8 +113,8 @@ class _NotificationPermissionScreenState
         );
       }
       
-    } catch (e) {
-      print('❌ Error requesting permissions: $e');
+    } catch (e, stack) {
+      LoggerService.error('Error requesting permissions', tag: 'NOTIF_PERMISSION', error: e, stackTrace: stack);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -134,6 +145,8 @@ class _NotificationPermissionScreenState
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(userProvider);
+    
     return Scaffold(
       backgroundColor: AppColors.midnightBlack,
       body: SafeArea(
@@ -193,20 +206,36 @@ class _NotificationPermissionScreenState
               
               const SizedBox(height: 32),
               
-              // Benefits
-              const _BenefitItem(
-                icon: Icons.access_time,
-                title: 'Rappel principal',
-                subtitle: 'Un rappel doux à 18h pour valider ta journée',
-              ),
-              
-              const SizedBox(height: 16),
-              
-              const _BenefitItem(
-                icon: Icons.alarm,
-                title: 'Rappel tardif',
-                subtitle: 'Un rappel plus ferme à 21h si tu n\'as pas validé',
-              ),
+              // Benefits with user's actual settings
+              if (user != null) ...[
+                _BenefitItem(
+                  icon: Icons.access_time,
+                  title: 'Rappel principal',
+                  subtitle: 'Un rappel doux à ${user.reminderTime}',
+                ),
+                
+                const SizedBox(height: 16),
+                
+                _BenefitItem(
+                  icon: Icons.alarm,
+                  title: 'Rappel tardif',
+                  subtitle: 'Un rappel plus ferme à ${user.lateReminderTime}',
+                ),
+              ] else ...[
+                const _BenefitItem(
+                  icon: Icons.access_time,
+                  title: 'Rappel principal',
+                  subtitle: 'Un rappel doux à 18:00',
+                ),
+                
+                const SizedBox(height: 16),
+                
+                const _BenefitItem(
+                  icon: Icons.alarm,
+                  title: 'Rappel tardif',
+                  subtitle: 'Un rappel plus ferme à 21:00',
+                ),
+              ],
               
               const SizedBox(height: 16),
               

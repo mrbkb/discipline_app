@@ -1,6 +1,6 @@
 // ============================================
-// FICHIER PRODUCTION : lib/main.dart
-// ✅ Tous les print() remplacés par LoggerService
+// FICHIER MIS À JOUR : lib/main.dart
+// ✅ Initialise AlarmNotificationService au lieu de NotificationService
 // ============================================
 import 'package:discipline/firebase_options.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +11,7 @@ import 'dart:async';
 
 import 'core/services/auto_sync_service.dart';
 import 'core/services/storage_service.dart';
-import 'core/services/notification_service.dart';
+import 'core/services/alarm_notification_service.dart';
 import 'core/services/analytics_service.dart';
 import 'core/services/daily_snapshot_service.dart';
 import 'core/services/logger_service.dart';
@@ -56,12 +56,17 @@ void main() async {
       LoggerService.error('Storage initialization failed', tag: 'APP', error: e, stackTrace: stack);
     }
     
-    // Initialize Notifications
+    // ✅ CHANGEMENT : Initialize AlarmNotificationService au lieu de NotificationService
     try {
-      await NotificationService.init();
-      LoggerService.info('Notifications initialized', tag: 'APP');
+      final notifInitialized = await AlarmNotificationService.initialize();
+      
+      if (notifInitialized) {
+        LoggerService.info('AlarmNotificationService initialized', tag: 'APP');
+      } else {
+        LoggerService.warning('AlarmNotificationService init failed', tag: 'APP');
+      }
     } catch (e, stack) {
-      LoggerService.error('Notifications initialization failed', tag: 'APP', error: e, stackTrace: stack);
+      LoggerService.error('AlarmNotificationService initialization failed', tag: 'APP', error: e, stackTrace: stack);
     }
     
     // Initialize Analytics
@@ -73,12 +78,12 @@ void main() async {
     }
 
     // Initialize Auto-Sync Service
-try {
-  await AutoSyncService().initialize();
-  LoggerService.info('Auto-sync service initialized', tag: 'APP');
-} catch (e, stack) {
-  LoggerService.error('Auto-sync initialization failed', tag: 'APP', error: e, stackTrace: stack);
-}
+    try {
+      await AutoSyncService().initialize();
+      LoggerService.info('Auto-sync service initialized', tag: 'APP');
+    } catch (e, stack) {
+      LoggerService.error('Auto-sync initialization failed', tag: 'APP', error: e, stackTrace: stack);
+    }
     
     // Create daily snapshot if needed
     try {

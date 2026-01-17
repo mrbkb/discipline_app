@@ -53,22 +53,7 @@
         </intent-filter>
     </receiver>
         
-        <!-- ✅ CRITIQUE: Receiver pour notifications -->
-        <receiver 
-            android:name=".NotificationBroadcastReceiver"
-            android:exported="false"
-            android:enabled="true" />
-            
-        <!-- ✅ Receiver après redémarrage -->
-        <receiver 
-            android:name=".BootCompletedReceiver"
-            android:exported="true"
-            android:enabled="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-            </intent-filter>
-        </receiver>
+        
         
         <meta-data
             android:name="flutterEmbedding"

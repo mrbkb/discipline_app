@@ -1,15 +1,14 @@
 // ============================================
-// FICHIER PRODUCTION : lib/presentation/providers/user_provider.dart
-// ✅ Tous les print() remplacés par LoggerService
+// FICHIER MIS À JOUR : lib/presentation/providers/user_provider.dart
+// ✅ Utilise AlarmNotificationService au lieu de NotificationService
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../core/services/firebase_service.dart';
-import '../../core/services/notification_service.dart';
+import '../../core/services/alarm_notification_service.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/services/logger_service.dart';
-import '../../core/services/notification_service.dart';
 
 // Repository provider
 final userRepositoryProvider = Provider<UserRepository>((ref) {
@@ -195,6 +194,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
     _notifyStateChange();
   }
   
+  /// ✅ MODIFIÉ : Utilise AlarmNotificationService
   Future<void> toggleHardMode() async {
     try {
       LoggerService.debug('Toggling hard mode', tag: 'USER');
@@ -214,11 +214,11 @@ class UserNotifier extends StateNotifier<UserModel?> {
           LoggerService.debug('Rescheduling notifications with new mode', tag: 'USER');
           
           try {
-            final hasPermissions = await NotificationService.areNotificationsEnabled();
+            final hasPermissions = await AlarmNotificationService.areNotificationsEnabled();
             
             if (!hasPermissions) {
               LoggerService.warning('No notification permissions, requesting', tag: 'USER');
-              final granted = await NotificationService.requestPermissions();
+              final granted = await AlarmNotificationService.requestPermissions();
               
               if (!granted) {
                 LoggerService.warning('Permissions denied, cannot schedule', tag: 'USER');
@@ -226,11 +226,8 @@ class UserNotifier extends StateNotifier<UserModel?> {
               }
             }
             
-            final scheduled = await NotificationService.scheduleDaily(
-              hour: user.reminderHour,
-              minute: user.reminderMinute,
-              isHardMode: user.isHardMode,
-            );
+            // ✅ CHANGEMENT : Utilise la nouvelle méthode
+            final scheduled = await AlarmNotificationService.scheduleDailyFromUser(user);
             
             if (scheduled) {
               LoggerService.info('Notifications rescheduled', tag: 'USER');
@@ -252,6 +249,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
     }
   }
   
+  /// ✅ MODIFIÉ : Utilise AlarmNotificationService
   Future<void> updateReminderTimes({
     String? reminder,
     String? lateReminder,
@@ -275,11 +273,11 @@ class UserNotifier extends StateNotifier<UserModel?> {
         LoggerService.debug('Rescheduling notifications with new times', tag: 'USER');
         
         try {
-          final hasPermissions = await NotificationService.areNotificationsEnabled();
+          final hasPermissions = await AlarmNotificationService.areNotificationsEnabled();
           
           if (!hasPermissions) {
             LoggerService.warning('No notification permissions', tag: 'USER');
-            final granted = await NotificationService.requestPermissions();
+            final granted = await AlarmNotificationService.requestPermissions();
             
             if (!granted) {
               LoggerService.warning('Permissions denied', tag: 'USER');
@@ -287,11 +285,8 @@ class UserNotifier extends StateNotifier<UserModel?> {
             }
           }
           
-          final scheduled = await NotificationService.scheduleDaily(
-            hour: user.reminderHour,
-            minute: user.reminderMinute,
-            isHardMode: user.isHardMode,
-          );
+          // ✅ CHANGEMENT : Utilise la nouvelle méthode
+          final scheduled = await AlarmNotificationService.scheduleDailyFromUser(user);
           
           if (scheduled) {
             LoggerService.info('Notifications rescheduled with new times', tag: 'USER');
@@ -306,6 +301,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
     }
   }
   
+  /// ✅ MODIFIÉ : Utilise AlarmNotificationService
   Future<void> toggleNotifications() async {
     LoggerService.debug('Toggling notifications', tag: 'USER');
     
@@ -323,11 +319,11 @@ class UserNotifier extends StateNotifier<UserModel?> {
         if (user.notificationsEnabled) {
           LoggerService.debug('Enabling notifications', tag: 'USER');
           
-          final hasPermissions = await NotificationService.areNotificationsEnabled();
+          final hasPermissions = await AlarmNotificationService.areNotificationsEnabled();
           
           if (!hasPermissions) {
             LoggerService.debug('Requesting notification permissions', tag: 'USER');
-            final granted = await NotificationService.requestPermissions();
+            final granted = await AlarmNotificationService.requestPermissions();
             
             if (!granted) {
               LoggerService.warning('Permissions denied', tag: 'USER');
@@ -341,11 +337,8 @@ class UserNotifier extends StateNotifier<UserModel?> {
             }
           }
           
-          final scheduled = await NotificationService.scheduleDaily(
-            hour: user.reminderHour,
-            minute: user.reminderMinute,
-            isHardMode: user.isHardMode,
-          );
+          // ✅ CHANGEMENT : Utilise la nouvelle méthode
+          final scheduled = await AlarmNotificationService.scheduleDailyFromUser(user);
           
           if (scheduled) {
             LoggerService.info('Notifications scheduled', tag: 'USER');
@@ -355,7 +348,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
           
         } else {
           LoggerService.debug('Disabling notifications', tag: 'USER');
-          await NotificationService.cancelAll();
+          await AlarmNotificationService.cancelAll();
           LoggerService.info('Notifications cancelled', tag: 'USER');
         }
         
@@ -365,6 +358,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
     }
   }
   
+  /// ✅ MODIFIÉ : Utilise AlarmNotificationService
   Future<void> completeOnboarding() async {
     LoggerService.debug('Completing onboarding', tag: 'USER');
     
@@ -377,14 +371,11 @@ class UserNotifier extends StateNotifier<UserModel?> {
       LoggerService.debug('Scheduling initial notifications', tag: 'USER');
       
       try {
-        final hasPermissions = await NotificationService.areNotificationsEnabled();
+        final hasPermissions = await AlarmNotificationService.areNotificationsEnabled();
         
         if (hasPermissions) {
-          final scheduled = await NotificationService.scheduleDaily(
-            hour: user.reminderHour,
-            minute: user.reminderMinute,
-            isHardMode: user.isHardMode,
-          );
+          // ✅ CHANGEMENT : Utilise la nouvelle méthode
+          final scheduled = await AlarmNotificationService.scheduleDailyFromUser(user);
           
           if (scheduled) {
             LoggerService.info('Initial notifications scheduled', tag: 'USER');

@@ -1,6 +1,6 @@
 // ============================================
-// FICHIER PRODUCTION : lib/presentation/providers/habits_provider.dart
-// ✅ Tous les print() remplacés par LoggerService
+// FICHIER MIS À JOUR : lib/presentation/providers/habits_provider.dart
+// ✅ Utilise AlarmNotificationService au lieu de NotificationService
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,7 +8,7 @@ import '../../data/models/habit_model.dart';
 import '../../data/repositories/habit_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../core/services/analytics_service.dart';
-import '../../core/services/notification_service.dart';
+import '../../core/services/alarm_notification_service.dart';
 import '../../core/services/logger_service.dart';
 
 // Repository provider
@@ -132,6 +132,7 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
   
   // ========== UPDATE ==========
   
+  /// ✅ MODIFIÉ : Utilise AlarmNotificationService
   Future<void> completeHabit(String id) async {
     await _repository.completeHabit(id);
     _loadHabits();
@@ -150,9 +151,9 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
       hour: DateTime.now().hour,
     );
     
-    // Check for milestone
-    if ([7, 14, 21, 30].contains(habit.currentStreak)) {
-      await NotificationService.showStreakMilestone(
+    // ✅ CHANGEMENT : Utilise AlarmNotificationService pour les milestones
+    if ([7, 14, 21, 30, 60, 90].contains(habit.currentStreak)) {
+      await AlarmNotificationService.showStreakMilestone(
         habit.title,
         habit.currentStreak,
       );
@@ -250,9 +251,29 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
     LoggerService.info('Day validated', tag: 'HABITS');
   }
   
+  /// ✅ MODIFIÉ : Utilise AlarmNotificationService pour les streaks perdus
   Future<void> performMidnightReset() async {
+    // Récupérer les habitudes avant le reset pour détecter les streaks perdus
+    final habitsBeforeReset = _repository.getActiveHabits();
+    
     await _repository.performMidnightReset();
     _loadHabits();
+    
+    // Notifier les streaks perdus
+    for (final habit in habitsBeforeReset) {
+      if (habit.currentStreak > 0 && !habit.isCompletedYesterday()) {
+        await AlarmNotificationService.showStreakBroken(
+          habit.title,
+          habit.currentStreak,
+        );
+        
+        await AnalyticsService.logStreakBroken(
+          habitId: habit.id,
+          lostStreak: habit.currentStreak,
+          wasBestStreak: habit.currentStreak == habit.bestStreak,
+        );
+      }
+    }
     
     LoggerService.info('Midnight reset performed', tag: 'HABITS');
   }

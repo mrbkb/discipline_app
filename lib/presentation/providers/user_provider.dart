@@ -9,6 +9,7 @@ import '../../core/services/firebase_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/services/logger_service.dart';
+import '../../core/services/notification_service.dart';
 
 // Repository provider
 final userRepositoryProvider = Provider<UserRepository>((ref) {

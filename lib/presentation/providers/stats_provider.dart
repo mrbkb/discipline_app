@@ -1,5 +1,6 @@
 // ============================================
-// FICHIER CORRIGÉ : lib/presentation/providers/stats_provider.dart
+// FICHIER PRODUCTION : lib/presentation/providers/stats_provider.dart
+// ✅ Tous les print() remplacés par LoggerService
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +8,7 @@ import '../../data/models/daily_snapshot_model.dart';
 import '../../data/models/habit_model.dart';
 import '../../data/repositories/snapshot_repository.dart';
 import '../../data/repositories/habit_repository.dart';
+import '../../core/services/logger_service.dart';
 import 'habits_provider.dart';
 
 // Repository provider
@@ -14,7 +16,7 @@ final snapshotRepositoryProvider = Provider<SnapshotRepository>((ref) {
   return SnapshotRepository();
 });
 
-// ✅ FIX: Calculer les stats en temps réel depuis les habits, pas les snapshots
+// Current stats provider
 final currentStatsProvider = Provider<CurrentStats>((ref) {
   final habits = ref.watch(activeHabitsProvider);
   
@@ -31,34 +33,27 @@ final currentStatsProvider = Provider<CurrentStats>((ref) {
     );
   }
   
-  // Calculer en temps réel
   final completedToday = habits.where((h) => h.isCompletedToday()).length;
   final totalHabits = habits.length;
   final completionRate = totalHabits > 0 ? completedToday / totalHabits : 0.0;
   
-  // Total streak = somme de tous les streaks actuels
   final totalStreak = habits.fold<int>(0, (sum, h) => sum + h.currentStreak);
-  
-  // Average streak
   final averageStreak = totalHabits > 0 ? totalStreak / totalHabits : 0.0;
   
-  // Best streak parmi toutes les habitudes
   final bestStreak = habits.isEmpty 
       ? 0 
       : habits.map((h) => h.bestStreak).reduce((a, b) => a > b ? a : b);
   
-  // Snapshots pour les stats historiques
   final snapshotRepo = ref.watch(snapshotRepositoryProvider);
   final perfectDays = snapshotRepo.countPerfectDays();
   final totalActiveDays = snapshotRepo.getSnapshotsCount();
   
-  print('📊 [Stats] Calculated:');
-  print('  Completed today: $completedToday/$totalHabits');
-  print('  Total streak: $totalStreak');
-  print('  Average streak: $averageStreak');
-  print('  Best streak: $bestStreak');
-  print('  Perfect days: $perfectDays');
-  print('  Total active days: $totalActiveDays');
+  LoggerService.debug('Stats calculated', tag: 'STATS', data: {
+    'completedToday': completedToday,
+    'totalHabits': totalHabits,
+    'totalStreak': totalStreak,
+    'bestStreak': bestStreak,
+  });
   
   return CurrentStats(
     completedToday: completedToday,
@@ -97,7 +92,7 @@ final weeklyCompletionPercentageProvider = Provider<int>((ref) {
   return (rate * 100).round();
 });
 
-// Best flame level provider (depuis les snapshots)
+// Best flame level provider
 final bestFlameLevelProvider = Provider<double>((ref) {
   final repository = ref.watch(snapshotRepositoryProvider);
   return repository.getBestFlameLevel();
@@ -127,7 +122,7 @@ final totalActiveDaysProvider = Provider<int>((ref) {
   return repository.getSnapshotsCount();
 });
 
-// Best streak across all habits provider
+// Best streak provider
 final bestStreakProvider = Provider<int>((ref) {
   final stats = ref.watch(currentStatsProvider);
   return stats.bestStreak;
@@ -146,7 +141,7 @@ final statsNotifierProvider = StateNotifierProvider<StatsNotifier, AsyncValue<vo
   return StatsNotifier(snapshotRepository, habitRepository);
 });
 
-// ✅ Classe pour regrouper les stats actuelles
+// Current stats class
 class CurrentStats {
   final int completedToday;
   final int totalHabits;
@@ -186,9 +181,9 @@ class StatsNotifier extends StateNotifier<AsyncValue<void>> {
       await _snapshotRepository.createSnapshot(habits: habits);
       state = const AsyncValue.data(null);
       
-      print('✅ [StatsNotifier] Today snapshot created');
+      LoggerService.info('Today snapshot created', tag: 'STATS');
     } catch (e, stack) {
-      print('❌ [StatsNotifier] Error creating snapshot: $e');
+      LoggerService.error('Error creating snapshot', tag: 'STATS', error: e, stackTrace: stack);
       state = AsyncValue.error(e, stack);
     }
   }
@@ -203,9 +198,9 @@ class StatsNotifier extends StateNotifier<AsyncValue<void>> {
       );
       state = const AsyncValue.data(null);
       
-      print('✅ [StatsNotifier] Snapshot created for $date');
+      LoggerService.info('Snapshot created', tag: 'STATS', data: {'date': date});
     } catch (e, stack) {
-      print('❌ [StatsNotifier] Error creating snapshot for $date: $e');
+      LoggerService.error('Error creating snapshot for date', tag: 'STATS', error: e, stackTrace: stack);
       state = AsyncValue.error(e, stack);
     }
   }
@@ -215,9 +210,11 @@ class StatsNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> cleanupOldSnapshots({int keepDays = 30}) async {
     try {
       await _snapshotRepository.deleteOldSnapshots(keepDays);
-      print('✅ [StatsNotifier] Old snapshots cleaned up');
-    } catch (e) {
-      print('❌ [StatsNotifier] Error cleaning up old snapshots: $e');
+      LoggerService.info('Old snapshots cleaned', tag: 'STATS', data: {
+        'keepDays': keepDays,
+      });
+    } catch (e, stack) {
+      LoggerService.error('Error cleaning snapshots', tag: 'STATS', error: e, stackTrace: stack);
     }
   }
 }

@@ -1,9 +1,11 @@
 
 // ============================================
-// FICHIER 19/30 : lib/data/repositories/snapshot_repository.dart
+// FICHIER 3/4 : lib/data/repositories/snapshot_repository.dart
+// ✅ Tous les print() remplacés par LoggerService
 // ============================================
 import 'package:hive/hive.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/logger_service.dart';
 import '../../core/utils/date_helper.dart';
 import '../models/daily_snapshot_model.dart';
 import '../models/habit_model.dart';
@@ -13,7 +15,6 @@ class SnapshotRepository {
   
   // ========== CREATE ==========
   
-  /// Create snapshot from current habits state
   Future<DailySnapshotModel> createSnapshot({
     required List<HabitModel> habits,
     String? date,
@@ -45,27 +46,30 @@ class SnapshotRepository {
     );
     
     await _box.put(snapshotDate, snapshot);
+    
+    LoggerService.info('Snapshot created', tag: 'SNAPSHOT_REPO', data: {
+      'date': snapshotDate,
+      'completed': completedCount,
+      'total': totalCount,
+    });
+    
     return snapshot;
   }
   
-  /// Save a single snapshot (for sync/restore)
   Future<void> saveSnapshot(DailySnapshotModel snapshot) async {
     await _box.put(snapshot.date, snapshot);
   }
   
   // ========== READ ==========
   
-  /// Get snapshot by date
   DailySnapshotModel? getSnapshotByDate(String date) {
     return _box.get(date);
   }
   
-  /// Get today's snapshot
   DailySnapshotModel? getTodaySnapshot() {
     return getSnapshotByDate(DateHelper.getTodayString());
   }
   
-  /// Get last N snapshots
   List<DailySnapshotModel> getLastNSnapshots(int n) {
     final snapshots = _box.values.toList()
       ..sort((a, b) => b.date.compareTo(a.date));
@@ -73,7 +77,6 @@ class SnapshotRepository {
     return snapshots.take(n).toList();
   }
   
-  /// Get snapshots for last 7 days
   List<DailySnapshotModel> getLastWeekSnapshots() {
     final last7Days = DateHelper.getLast7Days();
     final snapshots = <DailySnapshotModel>[];
@@ -83,7 +86,6 @@ class SnapshotRepository {
       if (snapshot != null) {
         snapshots.add(snapshot);
       } else {
-        // Create empty snapshot for missing days
         snapshots.add(DailySnapshotModel(
           date: date,
           completedHabits: 0,
@@ -98,20 +100,17 @@ class SnapshotRepository {
     return snapshots;
   }
   
-  /// Get all snapshots
   List<DailySnapshotModel> getAllSnapshots() {
     return _box.values.toList()
       ..sort((a, b) => a.date.compareTo(b.date));
   }
   
-  /// Get snapshots count
   int getSnapshotsCount() {
     return _box.length;
   }
   
   // ========== ANALYTICS ==========
   
-  /// Calculate average completion rate over last N days
   double getAverageCompletionRate(int days) {
     final snapshots = getLastNSnapshots(days);
     if (snapshots.isEmpty) return 0.0;
@@ -124,7 +123,6 @@ class SnapshotRepository {
     return totalRate / snapshots.length;
   }
   
-  /// Get best flame level
   double getBestFlameLevel() {
     if (_box.isEmpty) return 0.0;
     
@@ -133,12 +131,10 @@ class SnapshotRepository {
         .reduce((a, b) => a > b ? a : b);
   }
   
-  /// Count perfect days (100% completion)
   int countPerfectDays() {
     return _box.values.where((s) => s.isPerfectDay).length;
   }
   
-  /// Get current streak of perfect days
   int getCurrentPerfectStreak() {
     final snapshots = _box.values.toList()
       ..sort((a, b) => b.date.compareTo(a.date));
@@ -157,7 +153,6 @@ class SnapshotRepository {
   
   // ========== MAINTENANCE ==========
   
-  /// Delete snapshots older than N days
   Future<void> deleteOldSnapshots(int keepDays) async {
     final cutoffDate = DateTime.now().subtract(Duration(days: keepDays));
     final cutoffString = DateHelper.formatDate(cutoffDate);
@@ -172,10 +167,16 @@ class SnapshotRepository {
     for (final key in toDelete) {
       await _box.delete(key);
     }
+    
+    if (toDelete.isNotEmpty) {
+      LoggerService.info('Old snapshots deleted', tag: 'SNAPSHOT_REPO', data: {
+        'count': toDelete.length,
+      });
+    }
   }
   
-  /// Clear all snapshots
   Future<void> clearAllSnapshots() async {
     await _box.clear();
+    LoggerService.warning('All snapshots cleared', tag: 'SNAPSHOT_REPO');
   }
 }

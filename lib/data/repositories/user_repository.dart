@@ -1,9 +1,12 @@
+
 // ============================================
-// FICHIER MODIFIÉ : lib/data/repositories/user_repository.dart
+// FICHIER 2/4 : lib/data/repositories/user_repository.dart
+// ✅ Tous les print() remplacés par LoggerService
 // ============================================
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/logger_service.dart';
 import '../models/user_model.dart';
 
 class UserRepository {
@@ -14,24 +17,20 @@ class UserRepository {
   
   // ========== CREATE / UPDATE ==========
   
-  /// Save user
   Future<void> saveUser(UserModel user) async {
     await _box.put(_userKey, user);
   }
   
-  /// ✅ MODIFIÉ: Create initial user SANS exiger firebaseUid
-  /// Génère un UUID local si pas de Firebase
   Future<UserModel> createUser({
     required String nickname,
     String? firebaseUid,
     bool isAnonymous = true,
   }) async {
-    // ✅ Si pas de firebaseUid (mode offline), générer un UUID local
     final userId = firebaseUid ?? 'local_${_uuid.v4()}';
     
     final user = UserModel(
       nickname: nickname,
-      firebaseUid: userId.startsWith('local_') ? null : userId, // null si local
+      firebaseUid: userId.startsWith('local_') ? null : userId,
       createdAt: DateTime.now(),
       isAnonymous: isAnonymous,
       onboardingCompleted: false,
@@ -39,26 +38,26 @@ class UserRepository {
     
     await saveUser(user);
     
-    print('✅ [UserRepo] User created: ${userId.startsWith('local_') ? 'LOCAL' : 'FIREBASE'}');
-    print('   Nickname: $nickname');
-    print('   UID: $userId');
+    final mode = userId.startsWith('local_') ? 'LOCAL' : 'FIREBASE';
+    LoggerService.info('User created', tag: 'USER_REPO', data: {
+      'mode': mode,
+      'nickname': nickname,
+      'uid': userId,
+    });
     
     return user;
   }
   
   // ========== READ ==========
   
-  /// Get current user
   UserModel? getUser() {
     return _box.get(_userKey);
   }
   
-  /// Check if user exists
   bool userExists() {
     return _box.containsKey(_userKey);
   }
   
-  /// Check if onboarding is completed
   bool isOnboardingCompleted() {
     final user = getUser();
     return user?.onboardingCompleted ?? false;
@@ -66,7 +65,6 @@ class UserRepository {
   
   // ========== UPDATE ==========
   
-  /// Update user nickname
   Future<void> updateNickname(String nickname) async {
     final user = getUser();
     if (user != null) {
@@ -74,7 +72,6 @@ class UserRepository {
     }
   }
   
-  /// Toggle hard mode
   Future<void> toggleHardMode() async {
     final user = getUser();
     if (user != null) {
@@ -82,7 +79,6 @@ class UserRepository {
     }
   }
   
-  /// Update reminder times
   Future<void> updateReminderTimes({
     String? reminder,
     String? lateReminder,
@@ -96,7 +92,6 @@ class UserRepository {
     }
   }
   
-  /// Toggle notifications
   Future<void> toggleNotifications() async {
     final user = getUser();
     if (user != null) {
@@ -104,7 +99,6 @@ class UserRepository {
     }
   }
   
-  /// Complete onboarding
   Future<void> completeOnboarding() async {
     final user = getUser();
     if (user != null) {
@@ -112,18 +106,17 @@ class UserRepository {
     }
   }
   
-  /// ✅ NOUVEAU: Migrer un utilisateur local vers Firebase
-  /// Appelé quand la connexion Internet est rétablie
   Future<void> migrateToFirebase(String firebaseUid) async {
     final user = getUser();
     if (user != null && user.firebaseUid == null) {
-      print('🔄 [UserRepo] Migrating local user to Firebase: $firebaseUid');
+      LoggerService.info('Migrating local user to Firebase', tag: 'USER_REPO', data: {
+        'uid': firebaseUid,
+      });
       user.updateFirebaseUid(firebaseUid, anonymous: true);
-      print('✅ [UserRepo] Migration successful');
+      LoggerService.info('Migration successful', tag: 'USER_REPO');
     }
   }
   
-  /// Update Firebase UID
   Future<void> updateFirebaseUid(String uid, {bool anonymous = true}) async {
     final user = getUser();
     if (user != null) {
@@ -131,7 +124,6 @@ class UserRepository {
     }
   }
   
-  /// Upgrade to email account
   Future<void> upgradeToEmail(String email) async {
     final user = getUser();
     if (user != null) {
@@ -139,7 +131,6 @@ class UserRepository {
     }
   }
   
-  /// Mark as backed up
   Future<void> markBackedUp() async {
     final user = getUser();
     if (user != null) {
@@ -147,7 +138,6 @@ class UserRepository {
     }
   }
   
-  /// Increment habits created
   Future<void> incrementHabitsCreated() async {
     final user = getUser();
     if (user != null) {
@@ -155,7 +145,6 @@ class UserRepository {
     }
   }
   
-  /// Increment days active
   Future<void> incrementDaysActive() async {
     final user = getUser();
     if (user != null) {
@@ -165,8 +154,8 @@ class UserRepository {
   
   // ========== DELETE ==========
   
-  /// Clear user data
   Future<void> clearUser() async {
     await _box.clear();
+    LoggerService.warning('User data cleared', tag: 'USER_REPO');
   }
 }

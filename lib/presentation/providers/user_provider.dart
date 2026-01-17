@@ -1,6 +1,6 @@
 // ============================================
-// FICHIER CORRIGÉ : lib/presentation/providers/user_provider.dart
-// FIX: Notifications dans les réglages normaux
+// FICHIER PRODUCTION : lib/presentation/providers/user_provider.dart
+// ✅ Tous les print() remplacés par LoggerService
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/user_model.dart';
@@ -8,6 +8,7 @@ import '../../data/repositories/user_repository.dart';
 import '../../core/services/firebase_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/analytics_service.dart';
+import '../../core/services/logger_service.dart';
 
 // Repository provider
 final userRepositoryProvider = Provider<UserRepository>((ref) {
@@ -75,7 +76,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
   
   void _notifyStateChange() {
     if (state != null) {
-      print('🔔 [UserNotifier] Forcing state notification');
+      LoggerService.debug('Forcing state notification', tag: 'USER');
       state = state!.copyWith();
     }
   }
@@ -95,20 +96,22 @@ class UserNotifier extends StateNotifier<UserModel?> {
         await _loadUser();
         _notifyStateChange();
         
-        print('✅ [UserNotifier] User migrated to Firebase');
+        LoggerService.info('User migrated to Firebase', tag: 'USER', data: {
+          'uid': firebaseUser.uid,
+        });
         
         await _autoSyncAfterConnection();
       }
-    } catch (e) {
-      print('⚠️ [UserNotifier] Firebase connection failed (will retry later): $e');
+    } catch (e, stack) {
+      LoggerService.warning('Firebase connection failed (will retry later)', tag: 'USER', error: e);
     }
   }
   
   Future<void> _autoSyncAfterConnection() async {
     try {
-      print('🔄 [UserNotifier] Auto-sync triggered');
+      LoggerService.debug('Auto-sync triggered after connection', tag: 'USER');
     } catch (e) {
-      print('❌ [UserNotifier] Auto-sync failed: $e');
+      LoggerService.error('Auto-sync failed', tag: 'USER', error: e);
     }
   }
   
@@ -123,12 +126,13 @@ class UserNotifier extends StateNotifier<UserModel?> {
         
         await _autoSyncAfterConnection();
         
+        LoggerService.info('Force connect successful', tag: 'USER');
         return true;
       }
       
       return false;
-    } catch (e) {
-      print('❌ [UserNotifier] Force connect failed: $e');
+    } catch (e, stack) {
+      LoggerService.error('Force connect failed', tag: 'USER', error: e, stackTrace: stack);
       return false;
     }
   }
@@ -149,9 +153,11 @@ class UserNotifier extends StateNotifier<UserModel?> {
           name: 'account_upgraded',
           parameters: {'method': 'email'},
         );
+        
+        LoggerService.info('Account upgraded to email', tag: 'USER');
       }
-    } catch (e) {
-      print('Error upgrading to email: $e');
+    } catch (e, stack) {
+      LoggerService.error('Account upgrade failed', tag: 'USER', error: e, stackTrace: stack);
       rethrow;
     }
   }
@@ -171,30 +177,26 @@ class UserNotifier extends StateNotifier<UserModel?> {
     
     state = user;
     
-    if (firebaseUser == null) {
-      print('📱 [UserNotifier] User created in LOCAL mode (offline)');
-    } else {
-      print('☁️ [UserNotifier] User created with Firebase');
-    }
+    final mode = firebaseUser == null ? 'local' : 'cloud';
+    LoggerService.info('User created', tag: 'USER', data: {
+      'mode': mode,
+      'nickname': nickname,
+    });
   }
   
   // ========== UPDATE ==========
   
   Future<void> updateNickname(String nickname) async {
-    print('🔵 [UserNotifier] updateNickname: $nickname');
+    LoggerService.debug('Updating nickname', tag: 'USER', data: {'nickname': nickname});
     
     await _repository.updateNickname(nickname);
     state = _repository.getUser();
     _notifyStateChange();
   }
   
-  /// ✅ FIX CRITIQUE: toggleHardMode avec reprogrammation des notifications
   Future<void> toggleHardMode() async {
     try {
-      print('');
-      print('🔵 ========================================');
-      print('🔵 [UserNotifier] toggleHardMode');
-      print('🔵 ========================================');
+      LoggerService.debug('Toggling hard mode', tag: 'USER');
       
       await _repository.toggleHardMode();
       state = _repository.getUser();
@@ -202,28 +204,27 @@ class UserNotifier extends StateNotifier<UserModel?> {
       
       final user = state;
       if (user != null) {
-        print('   Hard mode: ${user.isHardMode}');
-        print('   Notifications enabled: ${user.notificationsEnabled}');
+        LoggerService.info('Hard mode toggled', tag: 'USER', data: {
+          'hardMode': user.isHardMode,
+          'notificationsEnabled': user.notificationsEnabled,
+        });
         
-        // ✅ FIX: Reprogrammer les notifications si activées
         if (user.notificationsEnabled) {
-          print('   → Rescheduling notifications...');
+          LoggerService.debug('Rescheduling notifications with new mode', tag: 'USER');
           
           try {
-            // ✅ Vérifier d'abord les permissions
             final hasPermissions = await NotificationService.areNotificationsEnabled();
             
             if (!hasPermissions) {
-              print('   ⚠️ No permissions, requesting...');
+              LoggerService.warning('No notification permissions, requesting', tag: 'USER');
               final granted = await NotificationService.requestPermissions();
               
               if (!granted) {
-                print('   ❌ Permissions denied, cannot schedule');
+                LoggerService.warning('Permissions denied, cannot schedule', tag: 'USER');
                 return;
               }
             }
             
-            // ✅ Programmer les notifications avec le nouveau mode
             final scheduled = await NotificationService.scheduleDaily(
               hour: user.reminderHour,
               minute: user.reminderMinute,
@@ -231,44 +232,33 @@ class UserNotifier extends StateNotifier<UserModel?> {
             );
             
             if (scheduled) {
-              print('   ✅ Notifications rescheduled successfully');
+              LoggerService.info('Notifications rescheduled', tag: 'USER');
             } else {
-              print('   ❌ Failed to reschedule notifications');
+              LoggerService.error('Failed to reschedule notifications', tag: 'USER');
             }
             
-          } catch (e) {
-            print('   ❌ Error rescheduling notifications: $e');
+          } catch (e, stack) {
+            LoggerService.error('Error rescheduling notifications', tag: 'USER', error: e, stackTrace: stack);
           }
-        } else {
-          print('   ℹ️ Notifications disabled, skipping reschedule');
         }
       }
       
-      // Analytics
-      try {
-        await AnalyticsService.logHardModeToggled(state!.isHardMode);
-      } catch (e) {
-        print('   ❌ Error logging hard mode toggle: $e');
-      }
+      await AnalyticsService.logHardModeToggled(state!.isHardMode);
       
-      print('🔵 ========================================');
-      print('');
-      
-    } catch (e) {
-      print('❌ Error in toggleHardMode: $e');
+    } catch (e, stack) {
+      LoggerService.error('Error in toggleHardMode', tag: 'USER', error: e, stackTrace: stack);
       rethrow;
     }
   }
   
-  /// ✅ FIX CRITIQUE: updateReminderTimes avec reprogrammation
   Future<void> updateReminderTimes({
     String? reminder,
     String? lateReminder,
   }) async {
-    print('');
-    print('🔵 ========================================');
-    print('🔵 [UserNotifier] updateReminderTimes');
-    print('🔵 ========================================');
+    LoggerService.debug('Updating reminder times', tag: 'USER', data: {
+      'reminder': reminder,
+      'lateReminder': lateReminder,
+    });
     
     await _repository.updateReminderTimes(
       reminder: reminder,
@@ -280,29 +270,22 @@ class UserNotifier extends StateNotifier<UserModel?> {
     
     final user = state;
     if (user != null) {
-      print('   New reminder: ${user.reminderTime}');
-      print('   Late reminder: ${user.lateReminderTime}');
-      print('   Notifications enabled: ${user.notificationsEnabled}');
-      
-      // ✅ FIX: Reprogrammer les notifications si activées
       if (user.notificationsEnabled) {
-        print('   → Rescheduling notifications...');
+        LoggerService.debug('Rescheduling notifications with new times', tag: 'USER');
         
         try {
-          // ✅ Vérifier les permissions
           final hasPermissions = await NotificationService.areNotificationsEnabled();
           
           if (!hasPermissions) {
-            print('   ⚠️ No permissions, requesting...');
+            LoggerService.warning('No notification permissions', tag: 'USER');
             final granted = await NotificationService.requestPermissions();
             
             if (!granted) {
-              print('   ❌ Permissions denied, cannot schedule');
+              LoggerService.warning('Permissions denied', tag: 'USER');
               return;
             }
           }
           
-          // ✅ Programmer avec les nouvelles heures
           final scheduled = await NotificationService.scheduleDaily(
             hour: user.reminderHour,
             minute: user.reminderMinute,
@@ -310,29 +293,20 @@ class UserNotifier extends StateNotifier<UserModel?> {
           );
           
           if (scheduled) {
-            print('   ✅ Notifications rescheduled successfully');
+            LoggerService.info('Notifications rescheduled with new times', tag: 'USER');
           } else {
-            print('   ❌ Failed to reschedule notifications');
+            LoggerService.error('Failed to reschedule', tag: 'USER');
           }
           
-        } catch (e) {
-          print('   ❌ Error rescheduling notifications: $e');
+        } catch (e, stack) {
+          LoggerService.error('Error rescheduling', tag: 'USER', error: e, stackTrace: stack);
         }
-      } else {
-        print('   ℹ️ Notifications disabled, skipping reschedule');
       }
     }
-    
-    print('🔵 ========================================');
-    print('');
   }
   
-  /// ✅ FIX CRITIQUE: toggleNotifications avec gestion complète
   Future<void> toggleNotifications() async {
-    print('');
-    print('🔵 ========================================');
-    print('🔵 [UserNotifier] toggleNotifications');
-    print('🔵 ========================================');
+    LoggerService.debug('Toggling notifications', tag: 'USER');
     
     await _repository.toggleNotifications();
     state = _repository.getUser();
@@ -340,23 +314,24 @@ class UserNotifier extends StateNotifier<UserModel?> {
     
     final user = state;
     if (user != null) {
-      print('   Notifications enabled: ${user.notificationsEnabled}');
+      LoggerService.info('Notifications toggled', tag: 'USER', data: {
+        'enabled': user.notificationsEnabled,
+      });
       
       try {
         if (user.notificationsEnabled) {
-          print('   → Enabling notifications...');
+          LoggerService.debug('Enabling notifications', tag: 'USER');
           
-          // ✅ Demander les permissions d'abord
           final hasPermissions = await NotificationService.areNotificationsEnabled();
           
           if (!hasPermissions) {
-            print('   ⚠️ No permissions, requesting...');
+            LoggerService.debug('Requesting notification permissions', tag: 'USER');
             final granted = await NotificationService.requestPermissions();
             
             if (!granted) {
-              print('   ❌ Permissions denied');
+              LoggerService.warning('Permissions denied', tag: 'USER');
               
-              // ✅ FIX: Re-désactiver si permissions refusées
+              // Re-disable if permissions refused
               await _repository.toggleNotifications();
               state = _repository.getUser();
               _notifyStateChange();
@@ -365,7 +340,6 @@ class UserNotifier extends StateNotifier<UserModel?> {
             }
           }
           
-          // ✅ Programmer les notifications
           final scheduled = await NotificationService.scheduleDaily(
             hour: user.reminderHour,
             minute: user.reminderMinute,
@@ -373,32 +347,25 @@ class UserNotifier extends StateNotifier<UserModel?> {
           );
           
           if (scheduled) {
-            print('   ✅ Notifications scheduled successfully');
+            LoggerService.info('Notifications scheduled', tag: 'USER');
           } else {
-            print('   ❌ Failed to schedule notifications');
+            LoggerService.error('Failed to schedule notifications', tag: 'USER');
           }
           
         } else {
-          print('   → Disabling notifications...');
+          LoggerService.debug('Disabling notifications', tag: 'USER');
           await NotificationService.cancelAll();
-          print('   ✅ Notifications cancelled');
+          LoggerService.info('Notifications cancelled', tag: 'USER');
         }
         
-      } catch (e) {
-        print('   ❌ Error toggling notifications: $e');
+      } catch (e, stack) {
+        LoggerService.error('Error toggling notifications', tag: 'USER', error: e, stackTrace: stack);
       }
     }
-    
-    print('🔵 ========================================');
-    print('');
   }
   
-  /// ✅ FIX: completeOnboarding avec programmation initiale
   Future<void> completeOnboarding() async {
-    print('');
-    print('🔵 ========================================');
-    print('🔵 [UserNotifier] completeOnboarding');
-    print('🔵 ========================================');
+    LoggerService.debug('Completing onboarding', tag: 'USER');
     
     await _repository.completeOnboarding();
     state = _repository.getUser();
@@ -406,10 +373,9 @@ class UserNotifier extends StateNotifier<UserModel?> {
     
     final user = state;
     if (user != null && user.notificationsEnabled) {
-      print('   → Scheduling initial notifications...');
+      LoggerService.debug('Scheduling initial notifications', tag: 'USER');
       
       try {
-        // ✅ Vérifier les permissions
         final hasPermissions = await NotificationService.areNotificationsEnabled();
         
         if (hasPermissions) {
@@ -420,25 +386,24 @@ class UserNotifier extends StateNotifier<UserModel?> {
           );
           
           if (scheduled) {
-            print('   ✅ Initial notifications scheduled');
+            LoggerService.info('Initial notifications scheduled', tag: 'USER');
           } else {
-            print('   ❌ Failed to schedule initial notifications');
+            LoggerService.warning('Failed to schedule initial notifications', tag: 'USER');
           }
         } else {
-          print('   ⚠️ No permissions, skipping initial schedule');
+          LoggerService.warning('No permissions, skipping initial schedule', tag: 'USER');
         }
         
-      } catch (e) {
-        print('   ❌ Error scheduling initial notifications: $e');
+      } catch (e, stack) {
+        LoggerService.error('Error scheduling initial notifications', tag: 'USER', error: e, stackTrace: stack);
       }
     }
     
-    print('🔵 ========================================');
-    print('');
+    LoggerService.info('Onboarding completed', tag: 'USER');
   }
   
   Future<void> markBackedUp() async {
-    print('🔵 [UserNotifier] markBackedUp');
+    LoggerService.debug('Marking as backed up', tag: 'USER');
     
     await _repository.markBackedUp();
     state = _repository.getUser();

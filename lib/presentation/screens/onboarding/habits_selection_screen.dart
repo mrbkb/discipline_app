@@ -1,12 +1,13 @@
 // ============================================
-// FICHIER 29/30 : lib/presentation/screens/onboarding/habits_selection_screen.dart
+// FICHIER PRODUCTION : lib/presentation/screens/onboarding/habits_selection_screen.dart
+// VERSION MINIMALISTE ET ÉPURÉE
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vibration/vibration.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_strings.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../../core/services/logger_service.dart';
 import '../../providers/habits_provider.dart';
 import '../../providers/user_provider.dart';
 import 'notification_permission_screen.dart';
@@ -28,6 +29,8 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
     {'title': 'Coding', 'emoji': '💻', 'color': '#E74C3C'},
     {'title': 'Journal', 'emoji': '📝', 'color': '#F39C12'},
     {'title': 'Apprentissage', 'emoji': '🎓', 'color': '#2ECC71'},
+    {'title': 'Cuisine', 'emoji': '🍳', 'color': '#E67E22'},
+    {'title': 'Marche', 'emoji': '🚶', 'color': '#1ABC9C'},
   ];
   
   final Set<int> _selectedIndices = {};
@@ -38,6 +41,7 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
   void initState() {
     super.initState();
     AnalyticsService.logScreenView('habits_selection');
+    LoggerService.info('Habits selection screen opened', tag: 'ONBOARDING');
   }
 
   @override
@@ -50,10 +54,12 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
     setState(() {
       if (_selectedIndices.contains(index)) {
         _selectedIndices.remove(index);
+        LoggerService.debug('Habit deselected: ${_predefinedHabits[index]['title']}', tag: 'ONBOARDING');
       } else {
         if (_selectedIndices.length < 5) {
           _selectedIndices.add(index);
-          Vibration.vibrate(duration: 50);
+          Vibration.vibrate(duration: 30);
+          LoggerService.debug('Habit selected: ${_predefinedHabits[index]['title']}', tag: 'ONBOARDING');
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -81,7 +87,6 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
       return;
     }
     
-    // Add to predefined list temporarily
     setState(() {
       _predefinedHabits.add({
         'title': title,
@@ -92,7 +97,8 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
       _customController.clear();
     });
     
-    Vibration.vibrate(duration: 50);
+    Vibration.vibrate(duration: 30);
+    LoggerService.info('Custom habit added: $title', tag: 'ONBOARDING');
   }
 
   Future<void> _finish() async {
@@ -109,30 +115,32 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
     setState(() => _isLoading = true);
     
     try {
-      // Create selected habits
       final selectedHabits = _selectedIndices
           .map((i) => _predefinedHabits[i])
           .toList();
       
-      await ref.read(habitsProvider.notifier).createMultipleHabits(selectedHabits);
+      LoggerService.info('Creating ${selectedHabits.length} habits', tag: 'ONBOARDING');
       
-      // Complete onboarding
+      await ref.read(habitsProvider.notifier).createMultipleHabits(selectedHabits);
       await ref.read(userProvider.notifier).completeOnboarding();
       
-      // Analytics
       await AnalyticsService.logOnboardingCompleted(
         nickname: ref.read(userNicknameProvider),
         habitsCount: _selectedIndices.length,
       );
       
+      LoggerService.info('Onboarding completed successfully', tag: 'ONBOARDING');
+      
       if (mounted) {
         Navigator.of(context).push(
-  MaterialPageRoute(
-    builder: (context) => const NotificationPermissionScreen(),
-  ),
-);
+          MaterialPageRoute(
+            builder: (context) => const NotificationPermissionScreen(),
+          ),
+        );
       }
-    } catch (e) {
+    } catch (e, stack) {
+      LoggerService.error('Failed to complete onboarding', tag: 'ONBOARDING', error: e, stackTrace: stack);
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -167,14 +175,19 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    AppStrings.habitsTitle,
-                    style: Theme.of(context).textTheme.displaySmall,
+                  const Text(
+                    'Choisis tes batailles',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    AppStrings.habitsSubtitle,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  const SizedBox(height: 8),
+                  const Text(
+                    '3 à 5 habitudes pour commencer',
+                    style: TextStyle(
+                      fontSize: 16,
                       color: AppColors.textSecondary,
                     ),
                   ),
@@ -183,89 +196,149 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
                   // Selection counter
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                      horizontal: 16,
+                      vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: _selectedIndices.length >= 3
-                          ? AppColors.successGreen.withValues(alpha:0.2)
-                          : AppColors.lavaOrange.withValues(alpha:0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${_selectedIndices.length}/5 sélectionnées',
-                      style: TextStyle(
-                        color: _selectedIndices.length >= 3
-                            ? AppColors.successGreen
-                            : AppColors.lavaOrange,
-                        fontWeight: FontWeight.w600,
+                      gradient: LinearGradient(
+                        colors: [
+                          _selectedIndices.length >= 3
+                              ? AppColors.successGreen.withValues(alpha: 0.2)
+                              : AppColors.lavaOrange.withValues(alpha: 0.2),
+                          _selectedIndices.length >= 3
+                              ? AppColors.successGreen.withValues(alpha: 0.1)
+                              : AppColors.lavaOrange.withValues(alpha: 0.1),
+                        ],
                       ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: _selectedIndices.length >= 3
+                            ? AppColors.successGreen.withValues(alpha: 0.3)
+                            : AppColors.lavaOrange.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _selectedIndices.length >= 3 ? Icons.check_circle : Icons.radio_button_unchecked,
+                          color: _selectedIndices.length >= 3
+                              ? AppColors.successGreen
+                              : AppColors.lavaOrange,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_selectedIndices.length}/5 sélectionnées',
+                          style: TextStyle(
+                            color: _selectedIndices.length >= 3
+                                ? AppColors.successGreen
+                                : AppColors.lavaOrange,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
             
-            // Habits grid
+            // Habits list (scrollable)
             Expanded(
-              child: GridView.builder(
+              child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.4,
-                ),
                 itemCount: _predefinedHabits.length,
                 itemBuilder: (context, index) {
                   final habit = _predefinedHabits[index];
                   final isSelected = _selectedIndices.contains(index);
                   
-                  return InkWell(
-                    onTap: () => _toggleHabit(index),
-                    borderRadius: BorderRadius.circular(16),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.lavaOrange.withValues(alpha:0.2)
-                            : AppColors.cardBackground,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected
-                              ? AppColors.lavaOrange
-                              : Colors.transparent,
-                          width: 2,
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: InkWell(
+                      onTap: () => _toggleHabit(index),
+                      borderRadius: BorderRadius.circular(14),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            habit['emoji'],
-                            style: const TextStyle(fontSize: 40),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.lavaOrange.withValues(alpha: 0.15)
+                              : AppColors.cardBackground,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.lavaOrange
+                                : Colors.transparent,
+                            width: 2,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            habit['title'],
-                            style: TextStyle(
-                              color: isSelected
-                                  ? AppColors.lavaOrange
-                                  : AppColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
-                          if (isSelected)
-                            const Padding(
-                              padding: EdgeInsets.only(top: 4),
-                              child: Icon(
-                                Icons.check_circle,
-                                color: AppColors.lavaOrange,
-                                size: 20,
+                        ),
+                        child: Row(
+                          children: [
+                            // Emoji
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppColors.lavaOrange.withValues(alpha: 0.2)
+                                    : AppColors.deadGray,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  habit['emoji'],
+                                  style: const TextStyle(fontSize: 22),
+                                ),
                               ),
                             ),
-                        ],
+                            const SizedBox(width: 14),
+                            
+                            // Title
+                            Expanded(
+                              child: Text(
+                                habit['title'],
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? AppColors.lavaOrange
+                                      : AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                            
+                            // Checkbox
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppColors.lavaOrange
+                                    : Colors.transparent,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.lavaOrange
+                                      : AppColors.textTertiary,
+                                  width: 2,
+                                ),
+                              ),
+                              child: isSelected
+                                  ? const Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: 16,
+                                    )
+                                  : null,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -273,11 +346,26 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
               ),
             ),
             
-            // Custom habit input
-            Padding(
-              padding: const EdgeInsets.all(24.0),
+            // Bottom section (custom input + finish button)
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.cardBackground,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Custom habit input
                   Row(
                     children: [
                       Expanded(
@@ -286,29 +374,35 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
                           decoration: InputDecoration(
                             hintText: '+ Ajouter une habitude',
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(14),
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
-                            fillColor: AppColors.cardBackground,
+                            fillColor: AppColors.deadGray,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 14,
                             ),
                           ),
                           onSubmitted: (_) => _addCustomHabit(),
+                          textCapitalization: TextCapitalization.sentences,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Container(
-                        height: 48,
-                        width: 48,
+                        height: 52,
+                        width: 52,
                         decoration: BoxDecoration(
-                          color: AppColors.lavaOrange,
-                          borderRadius: BorderRadius.circular(12),
+                          gradient: const LinearGradient(
+                            colors: [
+                              AppColors.lavaOrange,
+                              Color(0xFFFF8C5A),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.add, color: Colors.white),
+                          icon: const Icon(Icons.add, color: Colors.white, size: 24),
                           onPressed: _addCustomHabit,
                         ),
                       ),
@@ -330,6 +424,7 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
+                        elevation: 0,
                       ),
                       child: _isLoading
                           ? const SizedBox(
@@ -344,7 +439,7 @@ class _HabitsSelectionScreenState extends ConsumerState<HabitsSelectionScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  AppStrings.habitsStart,
+                                  'C\'est parti ! 🔥',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w600,

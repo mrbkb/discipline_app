@@ -1,11 +1,13 @@
 // ============================================
-// FICHIER PRODUCTION : lib/presentation/screens/settings/settings_screen.dart
-// ✅ Widget de test RETIRÉ
+// FICHIER SIMPLIFIÉ : lib/presentation/screens/settings/settings_screen.dart
+// ✅ SANS boutons backup/restore manuels
+// ✅ Sync 100% automatique en arrière-plan
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/services/auto_sync_service.dart';
 import '../../providers/stats_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/sync_provider.dart';
@@ -16,7 +18,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(userProvider);
-    final syncState = ref.watch(syncNotifierProvider);
     final isOnline = ref.watch(isOnlineProvider);
     final totalActiveDays = ref.watch(totalActiveDaysProvider);
 
@@ -219,293 +220,18 @@ class SettingsScreen extends ConsumerWidget {
 
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-          // Backup Section
-          SliverToBoxAdapter(
+          // ✅ NOUVEAU: Auto-Sync Status (remplace la section Backup/Restore)
+        /*  SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Sauvegarde',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
+              padding: const EdgeInsets.all(24),
+              child: _AutoSyncStatusCard(
+                isOnline: isOnline,
+                user: user,
               ),
             ),
           ),
 
-          // Backup Items
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.cardBackground,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    // Backup button
-                    _SettingsTile(
-                      icon: Icons.cloud_upload,
-                      iconColor: AppColors.successGreen,
-                      title: AppStrings.settingsBackup,
-                      subtitle: user.hasBackedUp
-                          ? 'Dernière sauvegarde: ${_formatLastSync(user.lastSyncAt)}'
-                          : 'Jamais sauvegardé',
-                      trailing: syncState.status == SyncStatus.syncing
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.chevron_right),
-                      onTap: isOnline
-                          ? () async {
-                              await ref.read(syncNotifierProvider.notifier).backupToCloud();
-                            }
-                          : null,
-                    ),
-                    const Divider(height: 1, color: AppColors.divider),
-
-                    // Restore button
-                    _SettingsTile(
-                      icon: Icons.cloud_download,
-                      iconColor: Colors.blue,
-                      title: AppStrings.settingsRestore,
-                      subtitle: 'Récupérer depuis le cloud',
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: isOnline && user.hasBackedUp
-                          ? () => _showRestoreDialog(context, ref)
-                          : null,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Mode local warning
-          if (ref.watch(isLocalModeProvider))
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.warningYellow.withValues(alpha: 0.2),
-                        AppColors.lavaOrange.withValues(alpha: 0.1),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.warningYellow.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.warningYellow.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.cloud_off,
-                              color: AppColors.warningYellow,
-                              size: 28,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Mode Local',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.warningYellow,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Données stockées localement uniquement',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Tu as créé ton compte sans connexion Internet. Tes données sont sauvegardées localement et seront automatiquement synchronisées avec le cloud dès que tu seras connecté.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: isOnline
-                              ? () async {
-                                  showDialog(
-                                    context: context,
-                                    barrierDismissible: false,
-                                    builder: (context) => const Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  );
-                                  
-                                  final success = await ref
-                                      .read(userProvider.notifier)
-                                      .forceConnectToFirebase();
-                                  
-                                  if (context.mounted) {
-                                    Navigator.pop(context);
-                                    
-                                    if (success) {
-                                      await ref
-                                          .read(syncNotifierProvider.notifier)
-                                          .backupToCloud();
-                                      
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('✅ Connecté et synchronisé !'),
-                                          backgroundColor: AppColors.successGreen,
-                                        ),
-                                      );
-                                    } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('❌ Connexion échouée'),
-                                          backgroundColor: AppColors.dangerRed,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                }
-                              : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.lavaOrange,
-                            disabledBackgroundColor: AppColors.deadGray,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: Icon(
-                            isOnline ? Icons.cloud_upload : Icons.wifi_off,
-                            size: 20,
-                          ),
-                          label: Text(
-                            isOnline
-                                ? 'Se connecter et synchroniser'
-                                : 'Connexion requise',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // Connection status
-          if (!isOnline)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.warningYellow.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.warningYellow.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.wifi_off,
-                        color: AppColors.warningYellow,
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Hors ligne - La sauvegarde nécessite une connexion',
-                          style: TextStyle(
-                            color: AppColors.warningYellow,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // Sync status message
-          if (syncState.message != null)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: syncState.status == SyncStatus.success
-                        ? AppColors.successGreen.withValues(alpha: 0.1)
-                        : AppColors.dangerRed.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        syncState.status == SyncStatus.success ? Icons.check_circle : Icons.error,
-                        color: syncState.status == SyncStatus.success
-                            ? AppColors.successGreen
-                            : AppColors.dangerRed,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          syncState.message!,
-                          style: TextStyle(
-                            color: syncState.status == SyncStatus.success
-                                ? AppColors.successGreen
-                                : AppColors.dangerRed,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),*/
 
           // About Section
           SliverToBoxAdapter(
@@ -562,18 +288,6 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  String _formatLastSync(DateTime? lastSync) {
-    if (lastSync == null) return 'Jamais';
-
-    final now = DateTime.now();
-    final diff = now.difference(lastSync);
-
-    if (diff.inMinutes < 1) return 'À l\'instant';
-    if (diff.inHours < 1) return 'Il y a ${diff.inMinutes}min';
-    if (diff.inDays < 1) return 'Il y a ${diff.inHours}h';
-    return 'Il y a ${diff.inDays}j';
   }
 
   void _showEditNicknameDialog(BuildContext context, WidgetRef ref, String currentNickname) {
@@ -651,34 +365,6 @@ class SettingsScreen extends ConsumerWidget {
         await ref.read(userProvider.notifier).updateReminderTimes(reminder: timeString);
       }
     }
-  }
-
-  void _showRestoreDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Restaurer les données ?'),
-        content: const Text(
-          'Cela va remplacer toutes vos données locales par celles du cloud. Cette action est irréversible.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await ref.read(syncNotifierProvider.notifier).restoreFromCloud();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.dangerRed),
-            child: const Text('Restaurer'),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -785,5 +471,137 @@ class _SettingsTile extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ✅ NOUVEAU: Widget de statut Auto-Sync
+class _AutoSyncStatusCard extends StatelessWidget {
+  final bool isOnline;
+  final dynamic user;
+
+  const _AutoSyncStatusCard({
+    required this.isOnline,
+    required this.user,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final syncStatus = AutoSyncService().getSyncStatus();
+    final isSyncing = syncStatus['isSyncing'] as bool;
+    final lastSyncAt = syncStatus['lastSyncAt'] as String?;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            isOnline
+                ? AppColors.successGreen.withValues(alpha: 0.15)
+                : AppColors.textSecondary.withValues(alpha: 0.1),
+            AppColors.cardBackground,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isOnline
+              ? AppColors.successGreen.withValues(alpha: 0.3)
+              : AppColors.textSecondary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isOnline
+                      ? AppColors.successGreen.withValues(alpha: 0.2)
+                      : AppColors.textSecondary.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isSyncing
+                      ? Icons.sync
+                      : isOnline
+                          ? Icons.cloud_done
+                          : Icons.cloud_off,
+                  color: isOnline ? AppColors.successGreen : AppColors.textSecondary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isOnline
+                          ? isSyncing
+                              ? 'Synchronisation...'
+                              : 'Sauvegarde automatique'
+                          : 'Mode hors ligne',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: isOnline ? AppColors.successGreen : AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isOnline
+                          ? 'Tes données sont synchronisées automatiquement'
+                          : 'Sync automatique dès que tu seras en ligne',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          if (lastSyncAt != null) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: AppColors.divider),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(
+                  Icons.check_circle,
+                  color: AppColors.successGreen,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Dernière sync: ${_formatLastSync(lastSyncAt)}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _formatLastSync(String lastSyncStr) {
+    try {
+      final lastSync = DateTime.parse(lastSyncStr);
+      final now = DateTime.now();
+      final diff = now.difference(lastSync);
+      
+      if (diff.inMinutes < 1) return 'À l\'instant';
+      if (diff.inHours < 1) return 'Il y a ${diff.inMinutes}min';
+      if (diff.inDays < 1) return 'Il y a ${diff.inHours}h';
+      return 'Il y a ${diff.inDays}j';
+    } catch (e) {
+      return 'Inconnue';
+    }
   }
 }

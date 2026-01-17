@@ -1,8 +1,10 @@
 // ============================================
-// FICHIER 17/30 : lib/data/repositories/habit_repository.dart
+// FICHIER 1/4 : lib/data/repositories/habit_repository.dart
+// ✅ Tous les print() remplacés par LoggerService
 // ============================================
 import 'package:hive/hive.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/logger_service.dart';
 import '../models/habit_model.dart';
 import 'package:uuid/uuid.dart';
 
@@ -12,7 +14,6 @@ class HabitRepository {
   
   // ========== CREATE ==========
   
-  /// Create a new habit
   Future<HabitModel> createHabit({
     required String title,
     String? emoji,
@@ -29,10 +30,14 @@ class HabitRepository {
     );
     
     await _box.put(habit.id, habit);
+    LoggerService.debug('Habit created in storage', tag: 'HABIT_REPO', data: {
+      'id': habit.id,
+      'title': title,
+    });
+    
     return habit;
   }
   
-  /// Create multiple habits at once (for onboarding)
   Future<List<HabitModel>> createMultipleHabits(
     List<Map<String, dynamic>> habitsData,
   ) async {
@@ -53,18 +58,20 @@ class HabitRepository {
       habits.add(habit);
     }
     
+    LoggerService.info('Multiple habits created', tag: 'HABIT_REPO', data: {
+      'count': habits.length,
+    });
+    
     return habits;
   }
   
   // ========== READ ==========
   
-  /// Get all habits (active and archived)
   List<HabitModel> getAllHabits() {
     return _box.values.toList()
       ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
   }
   
-  /// Get only active habits
   List<HabitModel> getActiveHabits() {
     return _box.values
         .where((habit) => habit.isActive)
@@ -72,7 +79,6 @@ class HabitRepository {
       ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
   }
   
-  /// Get archived habits
   List<HabitModel> getArchivedHabits() {
     return _box.values
         .where((habit) => !habit.isActive)
@@ -80,26 +86,22 @@ class HabitRepository {
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
   
-  /// Get habit by ID
   HabitModel? getHabitById(String id) {
     return _box.get(id);
   }
   
-  /// Get habits completed today
   List<HabitModel> getCompletedToday() {
     return getActiveHabits()
         .where((habit) => habit.isCompletedToday())
         .toList();
   }
   
-  /// Get habits not completed today
   List<HabitModel> getNotCompletedToday() {
     return getActiveHabits()
         .where((habit) => !habit.isCompletedToday())
         .toList();
   }
   
-  /// Get habits count
   int getHabitsCount({bool activeOnly = false}) {
     if (activeOnly) {
       return getActiveHabits().length;
@@ -109,34 +111,31 @@ class HabitRepository {
   
   // ========== UPDATE ==========
   
-  /// Update habit
   Future<void> updateHabit(HabitModel habit) async {
     habit.lastModified = DateTime.now();
     await habit.save();
   }
   
-  /// Save a single habit (for sync/restore)
   Future<void> saveHabit(HabitModel habit) async {
     await _box.put(habit.id, habit);
   }
   
-  /// Complete habit for today
   Future<void> completeHabit(String id) async {
     final habit = getHabitById(id);
     if (habit != null) {
       habit.completeToday();
+      LoggerService.debug('Habit completed', tag: 'HABIT_REPO', data: {'id': id});
     }
   }
   
-  /// Uncomplete habit for today
   Future<void> uncompleteHabit(String id) async {
     final habit = getHabitById(id);
     if (habit != null) {
       habit.uncompleteToday();
+      LoggerService.debug('Habit uncompleted', tag: 'HABIT_REPO', data: {'id': id});
     }
   }
   
-  /// Reorder habits
   Future<void> reorderHabits(List<String> orderedIds) async {
     for (int i = 0; i < orderedIds.length; i++) {
       final habit = getHabitById(orderedIds[i]);
@@ -149,20 +148,19 @@ class HabitRepository {
   
   // ========== DELETE ==========
   
-  /// Delete habit permanently
   Future<void> deleteHabit(String id) async {
     await _box.delete(id);
+    LoggerService.info('Habit deleted', tag: 'HABIT_REPO', data: {'id': id});
   }
   
-  /// Archive habit (soft delete)
   Future<void> archiveHabit(String id) async {
     final habit = getHabitById(id);
     if (habit != null) {
       habit.archive();
+      LoggerService.info('Habit archived', tag: 'HABIT_REPO', data: {'id': id});
     }
   }
   
-  /// Restore archived habit
   Future<void> restoreHabit(String id) async {
     final habit = getHabitById(id);
     if (habit != null) {
@@ -170,14 +168,13 @@ class HabitRepository {
     }
   }
   
-  /// Clear all habits (for restore operation)
   Future<void> clearAll() async {
     await _box.clear();
+    LoggerService.warning('All habits cleared', tag: 'HABIT_REPO');
   }
   
   // ========== ANALYTICS ==========
   
-  /// Calculate average streak across all habits
   double getAverageStreak() {
     final habits = getActiveHabits();
     if (habits.isEmpty) return 0.0;
@@ -190,7 +187,6 @@ class HabitRepository {
     return totalStreak / habits.length;
   }
   
-  /// Get total completed days across all habits
   int getTotalCompletedDays() {
     return getAllHabits().fold<int>(
       0,
@@ -198,7 +194,6 @@ class HabitRepository {
     );
   }
   
-  /// Get best streak across all habits
   int getBestStreak() {
     final habits = getAllHabits();
     if (habits.isEmpty) return 0;
@@ -206,7 +201,6 @@ class HabitRepository {
     return habits.map((h) => h.bestStreak).reduce((a, b) => a > b ? a : b);
   }
   
-  /// Get today's completion rate
   double getTodayCompletionRate() {
     final active = getActiveHabits();
     if (active.isEmpty) return 0.0;
@@ -217,7 +211,6 @@ class HabitRepository {
   
   // ========== MIDNIGHT RESET ==========
   
-  /// Reset streaks for habits not completed yesterday
   Future<void> performMidnightReset() async {
     final habits = getActiveHabits();
     
@@ -226,5 +219,9 @@ class HabitRepository {
         habit.resetStreak();
       }
     }
+    
+    LoggerService.info('Midnight reset completed', tag: 'HABIT_REPO', data: {
+      'habits': habits.length,
+    });
   }
 }

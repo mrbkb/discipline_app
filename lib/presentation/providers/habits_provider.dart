@@ -1,20 +1,21 @@
 // ============================================
-// FICHIER CORRIGÉ : lib/presentation/providers/habits_provider.dart
+// FICHIER PRODUCTION : lib/presentation/providers/habits_provider.dart
+// ✅ Tous les print() remplacés par LoggerService
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/habit_model.dart';
 import '../../data/repositories/habit_repository.dart';
-import '../../data/repositories/user_repository.dart'; // ✅ AJOUT
+import '../../data/repositories/user_repository.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/services/logger_service.dart';
 
 // Repository provider
 final habitRepositoryProvider = Provider<HabitRepository>((ref) {
   return HabitRepository();
 });
 
-// ✅ User Repository provider
 final userRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository();
 });
@@ -22,7 +23,7 @@ final userRepositoryProvider = Provider<UserRepository>((ref) {
 // Habits list provider
 final habitsProvider = StateNotifierProvider<HabitsNotifier, List<HabitModel>>((ref) {
   final repository = ref.watch(habitRepositoryProvider);
-  final userRepository = ref.watch(userRepositoryProvider); // ✅ AJOUT
+  final userRepository = ref.watch(userRepositoryProvider);
   return HabitsNotifier(repository, userRepository);
 });
 
@@ -54,7 +55,7 @@ final todayCompletionRateProvider = Provider<double>((ref) {
   return completed / activeHabits.length;
 });
 
-// All completed provider (check if all habits done today)
+// All completed provider
 final allCompletedProvider = Provider<bool>((ref) {
   final activeHabits = ref.watch(activeHabitsProvider);
   if (activeHabits.isEmpty) return false;
@@ -68,13 +69,13 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
   }
   
   final HabitRepository _repository;
-  final UserRepository _userRepository; // ✅ AJOUT
+  final UserRepository _userRepository;
   
   // ========== LOAD ==========
   
   void _loadHabits() {
     state = _repository.getActiveHabits();
-    print('📋 [HabitsNotifier] Loaded ${state.length} habits');
+    LoggerService.debug('Habits loaded', tag: 'HABITS', data: {'count': state.length});
   }
   
   void refresh() {
@@ -88,7 +89,7 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
     String? emoji,
     String? color,
   }) async {
-    print('➕ [HabitsNotifier] Creating habit: $title');
+    LoggerService.info('Creating habit', tag: 'HABITS', data: {'title': title});
     
     final habit = await _repository.createHabit(
       title: title,
@@ -98,11 +99,9 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
     
     state = [...state, habit];
     
-    // ✅ INCRÉMENTER le compteur d'habitudes créées
     await _userRepository.incrementHabitsCreated();
-    print('✅ [HabitsNotifier] Habit created, counter incremented');
+    LoggerService.debug('Habit counter incremented', tag: 'HABITS');
     
-    // Analytics
     await AnalyticsService.logEvent(
       name: 'habit_created',
       parameters: {
@@ -115,16 +114,20 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
   }
   
   Future<void> createMultipleHabits(List<Map<String, dynamic>> habitsData) async {
-    print('➕ [HabitsNotifier] Creating ${habitsData.length} habits');
+    LoggerService.info('Creating multiple habits', tag: 'HABITS', data: {
+      'count': habitsData.length,
+    });
     
     final habits = await _repository.createMultipleHabits(habitsData);
     state = [...state, ...habits];
     
-    // ✅ INCRÉMENTER le compteur pour chaque habitude
     for (int i = 0; i < habitsData.length; i++) {
       await _userRepository.incrementHabitsCreated();
     }
-    print('✅ [HabitsNotifier] ${habitsData.length} habits created, counters incremented');
+    
+    LoggerService.info('Multiple habits created', tag: 'HABITS', data: {
+      'count': habitsData.length,
+    });
   }
   
   // ========== UPDATE ==========
@@ -135,9 +138,11 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
     
     final habit = state.firstWhere((h) => h.id == id);
     
-    print('✅ [HabitsNotifier] Habit completed: ${habit.title}');
+    LoggerService.info('Habit completed', tag: 'HABITS', data: {
+      'title': habit.title,
+      'streak': habit.currentStreak,
+    });
     
-    // Analytics
     await AnalyticsService.logHabitValidated(
       habitId: habit.id,
       habitTitle: habit.title,
@@ -158,7 +163,7 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
     await _repository.uncompleteHabit(id);
     _loadHabits();
     
-    print('↩️ [HabitsNotifier] Habit uncompleted');
+    LoggerService.debug('Habit uncompleted', tag: 'HABITS', data: {'id': id});
   }
   
   Future<void> toggleHabitCompletion(String id) async {
@@ -181,7 +186,11 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
     if (habit != null) {
       habit.updateDetails(title: title, emoji: emoji, color: color);
       _loadHabits();
-      print('📝 [HabitsNotifier] Habit updated: $title');
+      
+      LoggerService.info('Habit updated', tag: 'HABITS', data: {
+        'id': id,
+        'title': title,
+      });
     }
   }
   
@@ -197,11 +206,10 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
     
     state = newState;
     
-    // Update order indices
     final orderedIds = newState.map((h) => h.id).toList();
     await _repository.reorderHabits(orderedIds);
     
-    print('🔄 [HabitsNotifier] Habits reordered');
+    LoggerService.debug('Habits reordered', tag: 'HABITS');
   }
   
   // ========== DELETE ==========
@@ -210,42 +218,42 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
     await _repository.archiveHabit(id);
     _loadHabits();
     
-    print('📦 [HabitsNotifier] Habit archived');
+    LoggerService.info('Habit archived', tag: 'HABITS', data: {'id': id});
   }
   
   Future<void> deleteHabit(String id) async {
     await _repository.deleteHabit(id);
     _loadHabits();
     
-    print('🗑️ [HabitsNotifier] Habit deleted');
+    LoggerService.info('Habit deleted', tag: 'HABITS', data: {'id': id});
   }
   
   // ========== ACTIONS ==========
   
-  /// Validate entire day (complete all incomplete habits)
   Future<void> validateDay() async {
     final incomplete = state.where((h) => !h.isCompletedToday()).toList();
     
-    print('✅ [HabitsNotifier] Validating day: ${incomplete.length} habits to complete');
+    LoggerService.info('Validating day', tag: 'HABITS', data: {
+      'incomplete': incomplete.length,
+      'total': state.length,
+    });
     
     for (final habit in incomplete) {
       await completeHabit(habit.id);
     }
     
-    // Analytics
     await AnalyticsService.logDayValidated(
       completedHabits: state.length,
       totalHabits: state.length,
     );
     
-    print('🎉 [HabitsNotifier] Day validated!');
+    LoggerService.info('Day validated', tag: 'HABITS');
   }
   
-  /// Perform midnight reset
   Future<void> performMidnightReset() async {
     await _repository.performMidnightReset();
     _loadHabits();
     
-    print('🌙 [HabitsNotifier] Midnight reset performed');
+    LoggerService.info('Midnight reset performed', tag: 'HABITS');
   }
 }

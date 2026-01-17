@@ -1,11 +1,13 @@
 // ============================================
-// FICHIER CORRIGÉ : lib/presentation/widgets/habit_card.dart
+// FICHIER PRODUCTION : lib/presentation/widgets/habit_card.dart
+// ✅ Tous les print() remplacés par LoggerService
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vibration/vibration.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../core/services/logger_service.dart';
 import '../../data/models/habit_model.dart';
 import '../providers/habits_provider.dart';
 
@@ -26,8 +28,6 @@ class _HabitCardState extends ConsumerState<HabitCard>
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   bool _isAnimating = false;
-  
-  // ✅ FIX: Tracker pour éviter les problèmes après dispose
   bool _isDisposed = false;
 
   @override
@@ -57,7 +57,6 @@ class _HabitCardState extends ConsumerState<HabitCard>
     try {
       await _controller.forward();
       
-      // ✅ FIX: Vérification vibration disponible
       if (await Vibration.hasVibrator()) {
         await Vibration.vibrate(duration: 50);
       }
@@ -65,9 +64,9 @@ class _HabitCardState extends ConsumerState<HabitCard>
       await ref.read(habitsProvider.notifier).toggleHabitCompletion(widget.habit.id);
       
       await _controller.reverse();
-    } catch (e) {
-      print('Error toggling habit: $e');
-      // ✅ FIX: Afficher erreur à l'utilisateur
+    } catch (e, stack) {
+      LoggerService.error('Error toggling habit', tag: 'HABIT_CARD', error: e, stackTrace: stack);
+      
       if (mounted && !_isDisposed) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -106,7 +105,6 @@ class _HabitCardState extends ConsumerState<HabitCard>
           ),
         ),
         confirmDismiss: (direction) async {
-          // ✅ FIX: Vérifier si le widget est toujours monté
           if (!mounted) return false;
           
           return await showDialog<bool>(
@@ -135,7 +133,7 @@ class _HabitCardState extends ConsumerState<HabitCard>
                 ),
               ],
             ),
-          ) ?? false; // ✅ FIX: Default à false si dialog fermé
+          ) ?? false;
         },
         onDismissed: (direction) async {
           try {
@@ -156,8 +154,8 @@ class _HabitCardState extends ConsumerState<HabitCard>
                 ),
               );
             }
-          } catch (e) {
-            print('Error archiving habit: $e');
+          } catch (e, stack) {
+            LoggerService.error('Error archiving habit', tag: 'HABIT_CARD', error: e, stackTrace: stack);
           }
         },
         child: InkWell(
@@ -215,7 +213,7 @@ class _HabitCardState extends ConsumerState<HabitCard>
                               ? TextDecoration.lineThrough
                               : null,
                         ),
-                        maxLines: 2, // ✅ FIX: Éviter débordement
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),

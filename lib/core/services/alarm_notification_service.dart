@@ -6,7 +6,6 @@
 // ============================================
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'dart:ui';
 import 'dart:math';
 import 'dart:io';
 import 'logger_service.dart';
@@ -22,13 +21,13 @@ class AlarmNotificationService {
   static bool _isInitialized = false;
   
   // ========== IDS DES ALARMES ==========
-  static const int MAIN_REMINDER_ID = 0;
-  static const int LATE_REMINDER_ID = 1;
-  static const int HARD_MODE_ID = 2;
+  static const int mainReminderId = 0;
+  static const int lateReminderId = 1;
+  static const int hardModeId = 2;
   
-  static const int MILESTONE_ID = 100;
-  static const int STREAK_BROKEN_ID = 99;
-  static const int TEST_ID = 999;
+  static const int milestoneId = 100;
+  static const int streakBrokenId = 99;
+  static const int testId = 999;
   
   // ========== INITIALISATION ==========
   
@@ -189,7 +188,7 @@ class AlarmNotificationService {
       final mainTime = _calculateNextOccurrence(hour, minute);
       final mainSuccess = await AndroidAlarmManager.periodic(
         const Duration(days: 1),
-        MAIN_REMINDER_ID,
+        mainReminderId,
         _callbackMainReminder,  // ✅ Callback avec préfixe underscore
         startAt: mainTime,
         exact: true,
@@ -212,7 +211,7 @@ class AlarmNotificationService {
       final lateTime = _calculateNextOccurrence(lateHour, lateMinute);
       final lateSuccess = await AndroidAlarmManager.periodic(
         const Duration(days: 1),
-        LATE_REMINDER_ID,
+        lateReminderId,
         _callbackLateReminder,
         startAt: lateTime,
         exact: true,
@@ -232,7 +231,7 @@ class AlarmNotificationService {
         final hardTime = _calculateNextOccurrence(23, 0);
         final hardSuccess = await AndroidAlarmManager.periodic(
           const Duration(days: 1),
-          HARD_MODE_ID,
+          hardModeId,
           _callbackHardModeReminder,
           startAt: hardTime,
           exact: true,
@@ -278,7 +277,7 @@ class AlarmNotificationService {
       await _initializeNotificationPlugin();
       
       await _showNotificationDirect(
-        id: MAIN_REMINDER_ID,
+        id: mainReminderId,
         title: 'Discipline 🔥',
         body: _getRandomMessage(NotificationMessages.doux),
       );
@@ -298,7 +297,7 @@ class AlarmNotificationService {
       await _initializeNotificationPlugin();
       
       await _showNotificationDirect(
-        id: LATE_REMINDER_ID,
+        id: lateReminderId,
         title: 'Discipline ⚠️',
         body: _getRandomMessage(NotificationMessages.piment),
       );
@@ -318,7 +317,7 @@ class AlarmNotificationService {
       await _initializeNotificationPlugin();
       
       await _showNotificationDirect(
-        id: HARD_MODE_ID,
+        id: hardModeId,
         title: 'DISCIPLINE 💀',
         body: _getRandomMessage(NotificationMessages.violence),
       );
@@ -353,7 +352,7 @@ class AlarmNotificationService {
     
     try {
       await _showNotificationDirect(
-        id: MILESTONE_ID,
+        id: milestoneId,
         title: 'Milestone Atteint ! 🎉',
         body: message,
       );
@@ -372,7 +371,7 @@ class AlarmNotificationService {
     
     try {
       await _showNotificationDirect(
-        id: STREAK_BROKEN_ID,
+        id: streakBrokenId,
         title: 'Streak Perdu 💔',
         body: '$habitTitle: $lostStreak jours perdus. Recommence plus fort !',
       );
@@ -450,6 +449,7 @@ class AlarmNotificationService {
     final logMessage = '[$timestamp] $message';
     
     // Log en console
+    
     print('🔔 [ALARM_DEBUG] $logMessage');
     
     // ✅ BONUS: Écrire dans un fichier pour debug
@@ -465,9 +465,9 @@ class AlarmNotificationService {
   
   static Future<void> cancelAll() async {
     try {
-      await AndroidAlarmManager.cancel(MAIN_REMINDER_ID);
-      await AndroidAlarmManager.cancel(LATE_REMINDER_ID);
-      await AndroidAlarmManager.cancel(HARD_MODE_ID);
+      await AndroidAlarmManager.cancel(mainReminderId);
+      await AndroidAlarmManager.cancel(lateReminderId);
+      await AndroidAlarmManager.cancel(hardModeId);
       
       LoggerService.info('All alarms cancelled', tag: 'ALARM_NOTIF');
       _debugLog('All alarms cancelled');
@@ -498,7 +498,7 @@ class AlarmNotificationService {
     
     try {
       await _showNotificationDirect(
-        id: TEST_ID,
+        id: testId,
         title: 'Test Discipline 🔥',
         body: 'Si tu vois ce message, les notifications fonctionnent !',
       );
@@ -524,7 +524,7 @@ class AlarmNotificationService {
     
     final success = await AndroidAlarmManager.oneShotAt(
       testTime,
-      TEST_ID,
+      testId,
       _callbackTest,
       exact: true,
       wakeup: true,
@@ -548,7 +548,7 @@ class AlarmNotificationService {
       await _initializeNotificationPlugin();
       
       await _showNotificationDirect(
-        id: TEST_ID,
+        id: testId,
         title: 'Test Réussi ! ⏰',
         body: 'L\'alarme fonctionne même quand l\'app est fermée !',
       );

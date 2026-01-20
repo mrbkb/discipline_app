@@ -11,7 +11,7 @@ import '../../../core/services/auto_sync_service.dart';
 import '../../providers/stats_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/sync_provider.dart';
-import '../../widgets/alarm_notification_debug_widget.dart';
+//import '../../widgets/alarm_notification_debug_widget.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -219,7 +219,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          //const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
           // ✅ NOUVEAU: Auto-Sync Status (remplace la section Backup/Restore)
         /*  SliverToBoxAdapter(
@@ -258,10 +258,10 @@ class SettingsScreen extends ConsumerWidget {
 const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
 // Widget de debug
-const SliverToBoxAdapter(
+/*const SliverToBoxAdapter(
   child: AlarmNotificationDebugWidget(),
 ),
-
+*/
 const SliverToBoxAdapter(child: SizedBox(height: 100)),
 
           // About Items

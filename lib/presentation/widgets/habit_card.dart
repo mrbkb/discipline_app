@@ -183,7 +183,7 @@ class _HabitCardState extends ConsumerState<HabitCard>
                   height: 56,
                   decoration: BoxDecoration(
                     color: isCompleted
-                        ? AppColors.successGreen.withOpacity(0.2)
+                        ? AppColors.successGreen.withValues(alpha: 0.2)
                         : AppColors.deadGray,
                     borderRadius: BorderRadius.circular(12),
                   ),

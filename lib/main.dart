@@ -1,6 +1,6 @@
 // ============================================
-// FICHIER MIS À JOUR : lib/main.dart
-// ✅ Initialise AlarmNotificationService au lieu de NotificationService
+// FICHIER CORRIGÉ : lib/main.dart
+// ✅ Tous les warnings fixés
 // ============================================
 import 'package:discipline/firebase_options.dart';
 import 'package:flutter/material.dart';
@@ -19,11 +19,10 @@ import 'core/theme/app_theme.dart';
 import 'presentation/screens/splash/splash_screen.dart';
 
 void main() async {
-  // Capturer toutes les erreurs
+  // ✅ FIX: Utiliser _ pour les variables inutilisées
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
     
-    // Capturer les erreurs Flutter
     FlutterError.onError = (FlutterErrorDetails details) {
       LoggerService.error(
         'Flutter framework error',
@@ -33,30 +32,27 @@ void main() async {
       );
     };
     
-    // Lock orientation to portrait
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);
     
     LoggerService.info('Starting Discipline app', tag: 'APP');
     
-    // Initialize Firebase
     try {
       await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
       LoggerService.info('Firebase initialized', tag: 'APP');
-    } catch (e, stack) {
-      LoggerService.error('Firebase initialization failed', tag: 'APP', error: e, stackTrace: stack);
+    } catch (e) {
+      // ✅ FIX: Pas besoin du stack trace ici
+      LoggerService.error('Firebase initialization failed', tag: 'APP', error: e);
     }
     
-    // Initialize Hive
     try {
       await StorageService.init();
       LoggerService.info('Storage initialized', tag: 'APP');
-    } catch (e, stack) {
-      LoggerService.error('Storage initialization failed', tag: 'APP', error: e, stackTrace: stack);
+    } catch (e) {
+      LoggerService.error('Storage initialization failed', tag: 'APP', error: e);
     }
     
-    // ✅ CHANGEMENT : Initialize AlarmNotificationService au lieu de NotificationService
     try {
       final notifInitialized = await AlarmNotificationService.initialize();
       
@@ -65,30 +61,27 @@ void main() async {
       } else {
         LoggerService.warning('AlarmNotificationService init failed', tag: 'APP');
       }
-    } catch (e, stack) {
-      LoggerService.error('AlarmNotificationService initialization failed', tag: 'APP', error: e, stackTrace: stack);
+    } catch (e) {
+      LoggerService.error('AlarmNotificationService initialization failed', tag: 'APP', error: e);
     }
     
-    // Initialize Analytics
     try {
       await AnalyticsService.init();
       LoggerService.info('Analytics initialized', tag: 'APP');
-    } catch (e, stack) {
-      LoggerService.error('Analytics initialization failed', tag: 'APP', error: e, stackTrace: stack);
+    } catch (e) {
+      LoggerService.error('Analytics initialization failed', tag: 'APP', error: e);
     }
 
-    // Initialize Auto-Sync Service
     try {
       await AutoSyncService().initialize();
       LoggerService.info('Auto-sync service initialized', tag: 'APP');
-    } catch (e, stack) {
-      LoggerService.error('Auto-sync initialization failed', tag: 'APP', error: e, stackTrace: stack);
+    } catch (e) {
+      LoggerService.error('Auto-sync initialization failed', tag: 'APP', error: e);
     }
     
-    // Create daily snapshot if needed
     try {
       await DailySnapshotService.checkAndCreateDailySnapshot();
-    } catch (e, stack) {
+    } catch (e) {
       LoggerService.warning('Daily snapshot check failed', tag: 'APP', error: e);
     }
     
@@ -98,7 +91,7 @@ void main() async {
       ),
     );
   }, (error, stack) {
-    // Capturer les erreurs Dart non gérées
+    // ✅ FIX: On utilise bien 'stack' ici
     LoggerService.critical(
       'Uncaught error in app',
       tag: 'APP',
@@ -137,8 +130,7 @@ class _DisciplineAppState extends ConsumerState<DisciplineApp> with WidgetsBindi
     LoggerService.debug('App lifecycle changed: ${state.name}', tag: 'APP');
     
     if (state == AppLifecycleState.resumed) {
-      // Check and create snapshot when app comes to foreground
-      DailySnapshotService.checkAndCreateDailySnapshot().catchError((e, stack) {
+      DailySnapshotService.checkAndCreateDailySnapshot().catchError((e) {
         LoggerService.warning('Snapshot check failed on resume', tag: 'APP', error: e);
       });
     }

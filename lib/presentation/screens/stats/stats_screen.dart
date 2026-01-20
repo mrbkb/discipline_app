@@ -1,5 +1,6 @@
 // ============================================
-// FICHIER COMPLET AVEC ANIMATIONS : lib/presentation/screens/stats/stats_screen.dart
+// FICHIER NETTOYÉ : lib/presentation/screens/stats/stats_screen.dart
+// ✅ Tous les print() retirés (calculs purs)
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,7 +28,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
     super.initState();
     AnalyticsService.logScreenView('stats');
     
-    // ✅ Animation controller pour les barres
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -38,7 +38,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
       curve: Curves.easeOutCubic,
     );
     
-    // Démarrer l'animation
     _animationController.forward();
   }
   
@@ -51,18 +50,15 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // ✅ Rejouer l'animation à chaque fois que la page est affichée
     _animationController.reset();
     _animationController.forward();
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Stats en temps réel depuis les habits
     final currentStats = ref.watch(currentStatsProvider);
     final habits = ref.watch(activeHabitsProvider);
     
-    // ✅ Calculer les stats hebdomadaires EN TEMPS RÉEL
     final weeklyData = _calculateWeeklyData(habits);
     final weeklyCompletionPercentage = weeklyData['completionPercentage'] as int;
     final bestFlamePercentage = ref.watch(bestFlamePercentageProvider);
@@ -70,7 +66,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
     return SafeArea(
       child: CustomScrollView(
         slivers: [
-          // App Bar
           const SliverAppBar(
             floating: true,
             backgroundColor: AppColors.midnightBlack,
@@ -78,7 +73,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
             centerTitle: false,
           ),
 
-          // Weekly Performance Chart
           SliverToBoxAdapter(
             child: Container(
               margin: const EdgeInsets.all(24),
@@ -122,9 +116,8 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
                   ),
                   const SizedBox(height: 24),
 
-                  // Bar Chart avec données EN TEMPS RÉEL
                   SizedBox(
-                    height: 180, // ✅ FIX: Augmenté pour éviter l'overflow
+                    height: 180,
                     child: AnimatedBuilder(
                       animation: _barAnimation,
                       builder: (context, child) {
@@ -140,8 +133,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
                             final completionRate = barData['completionRate'] as double;
                             final isPerfect = barData['isPerfect'] as bool;
                             
-                            // ✅ FIX: Animation échelonnée corrigée
-                            final delay = index * 0.08;  // Délai pour chaque barre
+                            final delay = index * 0.08;
                             final adjustedValue = (_barAnimation.value - delay).clamp(0.0, 1.0);
                             final normalizedValue = delay < 1.0 
                                 ? adjustedValue / (1.0 - delay)
@@ -153,11 +145,10 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
                             
                             return Expanded(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 3), // ✅ FIX: Réduit de 4 à 3
+                                padding: const EdgeInsets.symmetric(horizontal: 3),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    // ✅ Barre animée
                                     Container(
                                       height: animatedHeight.clamp(20.0, 140.0),
                                       decoration: BoxDecoration(
@@ -195,12 +186,11 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
                                           : null,
                                     ),
                                     const SizedBox(height: 8),
-                                    // ✅ Label avec fade-in
                                     AnimatedOpacity(
                                       opacity: animValue,
                                       duration: const Duration(milliseconds: 300),
                                       child: SizedBox(
-                                        height: 16, // ✅ FIX: Hauteur fixe pour éviter overflow
+                                        height: 16,
                                         child: Text(
                                           DateHelper.getDayLabel(date),
                                           style: TextStyle(
@@ -226,29 +216,16 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
                   ),
                   const SizedBox(height: 16),
 
-                  // Legend
                   const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _LegendItem(
-                        color: AppColors.successGreen,
-                        label: 'Parfait',
-                      ),
+                      _LegendItem(color: AppColors.successGreen, label: 'Parfait'),
                       SizedBox(width: 16),
-                      _LegendItem(
-                        color: AppColors.lavaOrange,
-                        label: 'Bon',
-                      ),
+                      _LegendItem(color: AppColors.lavaOrange, label: 'Bon'),
                       SizedBox(width: 16),
-                      _LegendItem(
-                        color: AppColors.warningYellow,
-                        label: 'Moyen',
-                      ),
+                      _LegendItem(color: AppColors.warningYellow, label: 'Moyen'),
                       SizedBox(width: 16),
-                      _LegendItem(
-                        color: AppColors.dangerRed,
-                        label: 'Faible',
-                      ),
+                      _LegendItem(color: AppColors.dangerRed, label: 'Faible'),
                     ],
                   ),
                 ],
@@ -256,7 +233,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
             ),
           ),
 
-          // ✅ Overall Stats Cards - Utiliser currentStats
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -320,7 +296,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
 
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-          // Habits Records
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -335,7 +310,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
 
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-          // Habits list with streaks
           if (habits.isEmpty)
             const SliverFillRemaining(
               child: Center(
@@ -375,7 +349,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
                       ),
                       child: Row(
                         children: [
-                          // Emoji
                           Container(
                             width: 48,
                             height: 48,
@@ -392,7 +365,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
                           ),
                           const SizedBox(width: 16),
 
-                          // Content
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,7 +398,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
                             ),
                           ),
 
-                          // Best streak
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -477,22 +448,17 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
     return AppColors.dangerRed;
   }
   
-  // ✅ NOUVELLE MÉTHODE : Calculer les stats hebdomadaires en temps réel
   Map<String, dynamic> _calculateWeeklyData(List<dynamic> habits) {
     final last7Days = DateHelper.getLast7Days();
     final List<Map<String, dynamic>> bars = [];
     int totalCompletionSum = 0;
     
-    print('📊 Calculating weekly data for ${habits.length} habits');
-    
     for (final dateString in last7Days) {
-      // Pour chaque jour, compter combien d'habitudes ont été complétées
       int completedCount = 0;
       final totalHabits = habits.length;
       
       if (totalHabits > 0) {
         for (final habit in habits) {
-          // Vérifier si l'habitude a été complétée ce jour-là
           if (habit.completedDates.contains(dateString)) {
             completedCount++;
           }
@@ -501,8 +467,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
       
       final completionRate = totalHabits > 0 ? completedCount / totalHabits : 0.0;
       final isPerfect = completedCount == totalHabits && totalHabits > 0;
-      
-      print('  $dateString: $completedCount/$totalHabits = ${(completionRate * 100).toInt()}%');
       
       bars.add({
         'date': dateString,
@@ -518,8 +482,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
     final averageCompletion = last7Days.isNotEmpty 
         ? (totalCompletionSum / last7Days.length).round() 
         : 0;
-    
-    print('📊 Average completion: $averageCompletion%');
     
     return {
       'bars': bars,

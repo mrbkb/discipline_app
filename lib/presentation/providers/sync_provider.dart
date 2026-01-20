@@ -1,6 +1,6 @@
-
 // ============================================
-// FICHIER 25/30 : lib/presentation/providers/sync_provider.dart
+// FICHIER NETTOYÉ : lib/presentation/providers/sync_provider.dart
+// ✅ Uniquement logs d'erreurs critiques
 // ============================================
 import 'package:discipline/presentation/providers/stats_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,20 +9,18 @@ import '../../data/repositories/firebase_repository.dart';
 import '../../data/repositories/habit_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/repositories/snapshot_repository.dart';
+import '../../core/services/logger_service.dart';
 import 'user_provider.dart';
 import 'habits_provider.dart' hide userRepositoryProvider;
 
-// Firebase repository provider
 final firebaseRepositoryProvider = Provider<FirebaseRepository>((ref) {
   return FirebaseRepository();
 });
 
-// Connectivity provider
 final connectivityProvider = StreamProvider<ConnectivityResult>((ref) {
   return Connectivity().onConnectivityChanged.map((results) => results.first);
 });
 
-// Is online provider
 final isOnlineProvider = Provider<bool>((ref) {
   final connectivity = ref.watch(connectivityProvider);
   return connectivity.when(
@@ -32,7 +30,6 @@ final isOnlineProvider = Provider<bool>((ref) {
   );
 });
 
-// Sync notifier
 final syncNotifierProvider = StateNotifierProvider<SyncNotifier, SyncState>((ref) {
   return SyncNotifier(
     ref.watch(firebaseRepositoryProvider),
@@ -84,79 +81,61 @@ class SyncNotifier extends StateNotifier<SyncState> {
   final SnapshotRepository _snapshotRepo;
   final Ref _ref;
 
-  
-/// ✅ NOUVEAU: Première synchronisation (migration local → cloud)
-Future<void> performFirstSync() async {
-  state = state.copyWith(
-    status: SyncStatus.syncing, 
-    message: 'Première synchronisation...'
-  );
-  
-  try {
-    final user = _userRepo.getUser();
-    if (user == null) {
-      throw Exception('No user found');
-    }
-    
-    // Vérifier qu'on a bien un firebaseUid maintenant
-    if (user.firebaseUid == null) {
-      throw Exception('User not connected to Firebase');
-    }
-    
-    print('🔄 [Sync] Starting first sync for: ${user.firebaseUid}');
-    
-    // Récupérer toutes les données locales
-    final habits = _habitRepo.getAllHabits();
-    final snapshots = _snapshotRepo.getAllSnapshots();
-    
-    print('📦 [Sync] Data to sync:');
-    print('   - ${habits.length} habits');
-    print('   - ${snapshots.length} snapshots');
-    
-    // Envoyer tout sur Firebase
-    await _firebaseRepo.performFullBackup(
-      uid: user.firebaseUid!,
-      user: user,
-      habits: habits,
-      snapshots: snapshots,
-    );
-    
-    // Marquer comme sauvegardé
-    await _userRepo.markBackedUp();
-    
+  Future<void> performFirstSync() async {
     state = state.copyWith(
-      status: SyncStatus.success,
-      message: '✅ Première sync réussie ! ${habits.length} habitudes synchronisées',
-      lastSyncAt: DateTime.now(),
+      status: SyncStatus.syncing, 
+      message: 'Première synchronisation...'
     );
     
-    print('✅ [Sync] First sync completed successfully');
-    
-    // Reset to idle after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        state = state.copyWith(status: SyncStatus.idle, message: null);
+    try {
+      final user = _userRepo.getUser();
+      if (user == null) {
+        throw Exception('No user found');
       }
-    });
-    
-  } catch (e) {
-    print('❌ [Sync] First sync failed: $e');
-    
-    state = state.copyWith(
-      status: SyncStatus.error,
-      message: 'Erreur de synchronisation: ${e.toString()}',
-    );
-    
-    // Reset to idle after 5 seconds
-    Future.delayed(const Duration(seconds: 5), () {
-      if (mounted) {
-        state = state.copyWith(status: SyncStatus.idle, message: null);
+      
+      if (user.firebaseUid == null) {
+        throw Exception('User not connected to Firebase');
       }
-    });
+      
+      final habits = _habitRepo.getAllHabits();
+      final snapshots = _snapshotRepo.getAllSnapshots();
+      
+      await _firebaseRepo.performFullBackup(
+        uid: user.firebaseUid!,
+        user: user,
+        habits: habits,
+        snapshots: snapshots,
+      );
+      
+      await _userRepo.markBackedUp();
+      
+      state = state.copyWith(
+        status: SyncStatus.success,
+        message: '✅ Première sync réussie ! ${habits.length} habitudes synchronisées',
+        lastSyncAt: DateTime.now(),
+      );
+      
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          state = state.copyWith(status: SyncStatus.idle, message: null);
+        }
+      });
+      
+    } catch (e, stack) {
+      LoggerService.error('First sync failed', tag: 'SYNC', error: e, stackTrace: stack);
+      
+      state = state.copyWith(
+        status: SyncStatus.error,
+        message: 'Erreur de synchronisation: ${e.toString()}',
+      );
+      
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) {
+          state = state.copyWith(status: SyncStatus.idle, message: null);
+        }
+      });
+    }
   }
-}
-  
-  // ========== BACKUP ==========
   
   Future<void> backupToCloud() async {
     state = state.copyWith(status: SyncStatus.syncing, message: 'Sauvegarde...');
@@ -185,20 +164,20 @@ Future<void> performFirstSync() async {
         lastSyncAt: DateTime.now(),
       );
       
-      // Reset to idle after 3 seconds
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
           state = state.copyWith(status: SyncStatus.idle, message: null);
         }
       });
       
-    } catch (e) {
+    } catch (e, stack) {
+      LoggerService.error('Backup failed', tag: 'SYNC', error: e, stackTrace: stack);
+      
       state = state.copyWith(
         status: SyncStatus.error,
         message: 'Erreur: ${e.toString()}',
       );
       
-      // Reset to idle after 5 seconds
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) {
           state = state.copyWith(status: SyncStatus.idle, message: null);
@@ -206,8 +185,6 @@ Future<void> performFirstSync() async {
       });
     }
   }
-  
-  // ========== RESTORE ==========
   
   Future<void> restoreFromCloud() async {
     state = state.copyWith(status: SyncStatus.syncing, message: 'Restauration...');
@@ -220,31 +197,23 @@ Future<void> performFirstSync() async {
       
       final data = await _firebaseRepo.performFullRestore(user.firebaseUid!);
       
-      // Clear local data
       await _habitRepo.clearAll();
       await _snapshotRepo.clearAllSnapshots();
       
-      // Restore user
-
-
-
       if (data['user'] != null) {
         await _userRepo.saveUser(data['user']);
       }
       
-      // Restore habits
       final habits = data['habits'] as List;
       for (final habit in habits) {
         await _habitRepo.saveHabit(habit);
       }
       
-      // Restore snapshots
       final snapshots = data['snapshots'] as List;
       for (final snapshot in snapshots) {
         await _snapshotRepo.saveSnapshot(snapshot);
       }
       
-      // Refresh providers
       _ref.invalidate(userProvider);
       _ref.invalidate(habitsProvider);
       
@@ -254,20 +223,20 @@ Future<void> performFirstSync() async {
         lastSyncAt: DateTime.now(),
       );
       
-      // Reset to idle after 3 seconds
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
           state = state.copyWith(status: SyncStatus.idle, message: null);
         }
       });
       
-    } catch (e) {
+    } catch (e, stack) {
+      LoggerService.error('Restore failed', tag: 'SYNC', error: e, stackTrace: stack);
+      
       state = state.copyWith(
         status: SyncStatus.error,
         message: 'Erreur: ${e.toString()}',
       );
       
-      // Reset to idle after 5 seconds
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) {
           state = state.copyWith(status: SyncStatus.idle, message: null);
@@ -275,8 +244,6 @@ Future<void> performFirstSync() async {
       });
     }
   }
-  
-  // ========== AUTO SYNC ==========
   
   Future<void> autoSync() async {
     final isOnline = _ref.read(isOnlineProvider);
@@ -288,10 +255,9 @@ Future<void> performFirstSync() async {
     try {
       final habits = _habitRepo.getAllHabits();
       await _firebaseRepo.saveMultipleHabits(user.firebaseUid!, habits);
-      
       await _userRepo.markBackedUp();
     } catch (e) {
-      print('Auto sync error: $e');
+      // Silent fail for auto-sync
     }
   }
 }

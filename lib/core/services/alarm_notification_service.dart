@@ -1,18 +1,15 @@
 // ============================================
-// FICHIER FIXÉ COMPLET : lib/core/services/alarm_notification_service.dart
-// ✅ Callbacks correctement configurés pour fonctionner en isolat
-// ✅ Initialisation du plugin dans chaque callback
-// ✅ Logs de debug persistants
+// FICHIER FIXÉ : lib/core/services/alarm_notification_service.dart
+// ✅ Remplacé print() par debugPrint() et logs fichier retirés
 // ============================================
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:math';
-import 'dart:io';
 import 'logger_service.dart';
 import '../constants/notification_messages.dart';
 import '../../data/models/user_model.dart';
 
-/// ✅ CRITIQUE: Annoter la classe pour AOT (release mode)
 @pragma('vm:entry-point')
 class AlarmNotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -20,7 +17,6 @@ class AlarmNotificationService {
   
   static bool _isInitialized = false;
   
-  // ========== IDS DES ALARMES ==========
   static const int mainReminderId = 0;
   static const int lateReminderId = 1;
   static const int hardModeId = 2;
@@ -29,16 +25,12 @@ class AlarmNotificationService {
   static const int streakBrokenId = 99;
   static const int testId = 999;
   
-  // ========== INITIALISATION ==========
-  
-  /// ✅ Initialiser le service (appelé au démarrage de l'app)
   static Future<bool> initialize() async {
     if (_isInitialized) return true;
     
     try {
       LoggerService.info('Initializing AlarmNotificationService', tag: 'ALARM_NOTIF');
       
-      // 1. Initialiser AndroidAlarmManager
       final alarmInitialized = await AndroidAlarmManager.initialize();
       
       if (!alarmInitialized) {
@@ -46,7 +38,6 @@ class AlarmNotificationService {
         return false;
       }
       
-      // 2. Initialiser FlutterLocalNotifications
       await _initializeNotificationPlugin();
       
       _isInitialized = true;
@@ -60,7 +51,6 @@ class AlarmNotificationService {
     }
   }
   
-  /// ✅ NOUVEAU: Initialiser le plugin (utilisé dans isolat aussi)
   @pragma('vm:entry-point')
   static Future<void> _initializeNotificationPlugin() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -70,8 +60,6 @@ class AlarmNotificationService {
     
     _debugLog('Notification plugin initialized');
   }
-  
-  // ========== PERMISSIONS ==========
   
   static Future<bool> requestPermissions() async {
     if (!_isInitialized) {
@@ -87,7 +75,6 @@ class AlarmNotificationService {
         return false;
       }
       
-      // 1. Permission de notifications
       final notifGranted = await androidPlugin.requestNotificationsPermission();
       
       if (notifGranted != true) {
@@ -95,7 +82,6 @@ class AlarmNotificationService {
         return false;
       }
       
-      // 2. Permission d'alarmes exactes
       final canScheduleExact = await androidPlugin.canScheduleExactNotifications();
       
       if (canScheduleExact != true) {
@@ -136,9 +122,6 @@ class AlarmNotificationService {
     }
   }
   
-  // ========== PROGRAMMATION ==========
-  
-  /// ✅ Programmer depuis UserModel
   static Future<bool> scheduleDailyFromUser(UserModel user) async {
     if (!user.notificationsEnabled) {
       LoggerService.info('Notifications disabled by user', tag: 'ALARM_NOTIF');
@@ -155,7 +138,6 @@ class AlarmNotificationService {
     );
   }
   
-  /// ✅ Programmer les alarmes quotidiennes
   static Future<bool> scheduleDaily({
     required int hour,
     required int minute,
@@ -184,12 +166,11 @@ class AlarmNotificationService {
       
       int successCount = 0;
       
-      // ✅ Rappel principal
       final mainTime = _calculateNextOccurrence(hour, minute);
       final mainSuccess = await AndroidAlarmManager.periodic(
         const Duration(days: 1),
         mainReminderId,
-        _callbackMainReminder,  // ✅ Callback avec préfixe underscore
+        _callbackMainReminder,
         startAt: mainTime,
         exact: true,
         wakeup: true,
@@ -207,7 +188,6 @@ class AlarmNotificationService {
         _debugLog('❌ Main reminder scheduling FAILED');
       }
       
-      // ✅ Rappel tardif
       final lateTime = _calculateNextOccurrence(lateHour, lateMinute);
       final lateSuccess = await AndroidAlarmManager.periodic(
         const Duration(days: 1),
@@ -226,7 +206,6 @@ class AlarmNotificationService {
         _debugLog('❌ Late reminder scheduling FAILED');
       }
       
-      // ✅ Mode violence
       if (isHardMode) {
         final hardTime = _calculateNextOccurrence(23, 0);
         final hardSuccess = await AndroidAlarmManager.periodic(
@@ -265,15 +244,11 @@ class AlarmNotificationService {
     }
   }
   
-  // ========== CALLBACKS (TOP-LEVEL FUNCTIONS) ==========
-  
-  /// ✅ CRITIQUE: Callback pour rappel principal
   @pragma('vm:entry-point')
   static Future<void> _callbackMainReminder() async {
     _debugLog('🔔 CALLBACK MAIN REMINDER TRIGGERED at ${DateTime.now()}');
     
     try {
-      // ✅ IMPORTANT: Réinitialiser le plugin dans l'isolat
       await _initializeNotificationPlugin();
       
       await _showNotificationDirect(
@@ -288,7 +263,6 @@ class AlarmNotificationService {
     }
   }
   
-  /// ✅ CRITIQUE: Callback pour rappel tardif
   @pragma('vm:entry-point')
   static Future<void> _callbackLateReminder() async {
     _debugLog('🔔 CALLBACK LATE REMINDER TRIGGERED at ${DateTime.now()}');
@@ -308,7 +282,6 @@ class AlarmNotificationService {
     }
   }
   
-  /// ✅ CRITIQUE: Callback pour mode violence
   @pragma('vm:entry-point')
   static Future<void> _callbackHardModeReminder() async {
     _debugLog('🔔 CALLBACK HARD MODE TRIGGERED at ${DateTime.now()}');
@@ -327,8 +300,6 @@ class AlarmNotificationService {
       _debugLog('❌ Hard mode ERROR: $e');
     }
   }
-  
-  // ========== NOTIFICATIONS IMMÉDIATES ==========
   
   static Future<void> showStreakMilestone(String habitTitle, int streak) async {
     if (!_isInitialized) return;
@@ -383,8 +354,6 @@ class AlarmNotificationService {
     }
   }
   
-  // ========== HELPERS ==========
-  
   static DateTime _calculateNextOccurrence(int hour, int minute) {
     final now = DateTime.now();
     var scheduled = DateTime(now.year, now.month, now.day, hour, minute);
@@ -396,7 +365,6 @@ class AlarmNotificationService {
     return scheduled;
   }
   
-  /// ✅ NOUVEAU: Méthode directe pour afficher notification (utilisée dans callbacks)
   @pragma('vm:entry-point')
   static Future<void> _showNotificationDirect({
     required int id,
@@ -442,26 +410,15 @@ class AlarmNotificationService {
     return messages[random.nextInt(messages.length)];
   }
   
-  /// ✅ NOUVEAU: Debug logs persistants dans un fichier
+  // ✅ FIX: Utiliser debugPrint au lieu de print + retirer écriture fichier
   @pragma('vm:entry-point')
   static void _debugLog(String message) {
     final timestamp = DateTime.now().toIso8601String();
     final logMessage = '[$timestamp] $message';
     
-    // Log en console
-    
-    print('🔔 [ALARM_DEBUG] $logMessage');
-    
-    // ✅ BONUS: Écrire dans un fichier pour debug
-    try {
-      final file = File('/data/data/com.example.discipline/alarm_debug.log');
-      file.writeAsStringSync('$logMessage\n', mode: FileMode.append);
-    } catch (e) {
-      // Ignore si pas de permissions fichier
-    }
+    // ✅ debugPrint au lieu de print (autorisé en production)
+    debugPrint('🔔 [ALARM_DEBUG] $logMessage');
   }
-  
-  // ========== ANNULATION ==========
   
   static Future<void> cancelAll() async {
     try {
@@ -491,8 +448,6 @@ class AlarmNotificationService {
     return await areNotificationsEnabled();
   }
   
-  // ========== TESTS ==========
-  
   static Future<bool> testNotification() async {
     if (!_isInitialized) return false;
     
@@ -514,7 +469,6 @@ class AlarmNotificationService {
     }
   }
   
-  /// ✅ Test programmé dans 1 minute
   static Future<void> testIn1Minute() async {
     if (!_isInitialized) await initialize();
     

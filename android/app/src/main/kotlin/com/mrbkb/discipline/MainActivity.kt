@@ -1,4 +1,4 @@
-package com.example.discipline
+package com.mrbkb.discipline
 
 import io.flutter.embedding.android.FlutterActivity
 

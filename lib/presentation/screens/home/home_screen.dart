@@ -1,6 +1,6 @@
-
 // ============================================
 // FICHIER 30/30 : lib/presentation/screens/home/home_screen.dart
+// ✅ FIX: Limite 5 habitudes respectée + UI propre
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -313,137 +313,147 @@ class _HomeContent extends ConsumerWidget {
     );
   }
 
- void _showAddHabitDialog(BuildContext context, WidgetRef ref) {
-  final controller = TextEditingController();
-  String selectedEmoji = '✨';
-
-  showDialog(
-    context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setState) => Dialog(
-        backgroundColor: AppColors.cardBackground,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+  // ✅ FIX: Vérification de la limite 5 AVANT d'ouvrir le dialog
+  void _showAddHabitDialog(BuildContext context, WidgetRef ref) {
+    // ✅ Check limit FIRST
+    final currentHabitsCount = ref.read(activeHabitsProvider).length;
+    
+    if (currentHabitsCount >= 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🔥 Maximum 5 habitudes actives atteintes'),
+          backgroundColor: AppColors.warningYellow,
+          duration: Duration(seconds: 3),
         ),
-        child: Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      );
+      return; // ✅ Stop here
+    }
+    
+    final controller = TextEditingController();
+    String selectedEmoji = '✨';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Dialog(
+          backgroundColor: AppColors.cardBackground,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 🏷 Title
-                const Text(
-                  'Nouvelle habitude',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // 😃 Emoji selector (ANTI OVERFLOW)
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  alignment: WrapAlignment.center,
-                  children: ['✨', '💪', '📚', '🧘', '💧', '🎯'].map((emoji) {
-                    return InkWell(
-                      onTap: () {
-                        setState(() => selectedEmoji = emoji);
-                        Vibration.vibrate(duration: 30);
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: selectedEmoji == emoji
-                              ? AppColors.lavaOrange.withValues(alpha: 0.2)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: selectedEmoji == emoji
-                                ? AppColors.lavaOrange
-                                : Colors.transparent,
-                            width: 2,
-                          ),
-                        ),
-                        child: Text(
-                          emoji,
-                          style: const TextStyle(fontSize: 28),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-
-                const SizedBox(height: 20),
-
-                // ✏️ Title input
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText: 'Nom de l\'habitude',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 🏷 Title
+                  const Text(
+                    'Nouvelle habitude',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  textCapitalization: TextCapitalization.sentences,
-                ),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                // 🎯 Actions
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Annuler'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          final title = controller.text.trim();
-                          if (title.isNotEmpty) {
-                            await ref
-                                .read(habitsProvider.notifier)
-                                .createHabit(
-                                  title: title,
-                                  emoji: selectedEmoji,
-                                );
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                            }
-                          }
+                  // 😃 Emoji selector (ANTI OVERFLOW)
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    alignment: WrapAlignment.center,
+                    children: ['✨', '💪', '📚', '🧘', '💧', '🎯'].map((emoji) {
+                      return InkWell(
+                        onTap: () {
+                          setState(() => selectedEmoji = emoji);
+                          Vibration.vibrate(duration: 30);
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.lavaOrange,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: selectedEmoji == emoji
+                                ? AppColors.lavaOrange.withValues(alpha: 0.2)
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: selectedEmoji == emoji
+                                  ? AppColors.lavaOrange
+                                  : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                          child: Text(
+                            emoji,
+                            style: const TextStyle(fontSize: 28),
                           ),
                         ),
-                        child: const Text('Créer'),
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // ✏️ Title input
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: 'Nom de l\'habitude',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                  ],
-                ),
-              ],
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 🎯 Actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Annuler'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final title = controller.text.trim();
+                            if (title.isNotEmpty) {
+                              await ref
+                                  .read(habitsProvider.notifier)
+                                  .createHabit(
+                                    title: title,
+                                    emoji: selectedEmoji,
+                                  );
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                              }
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.lavaOrange,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Créer'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

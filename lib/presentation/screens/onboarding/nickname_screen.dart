@@ -1,6 +1,6 @@
-
 // ============================================
 // FICHIER 28/30 : lib/presentation/screens/onboarding/nickname_screen.dart
+// ✅ FIX: setState() ajouté pour mettre à jour le hover
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,8 +44,11 @@ class _NicknameScreenState extends ConsumerState<NicknameScreen> {
     super.dispose();
   }
 
+  // ✅ FIX: setState() pour mettre à jour le hover visuellement
   void _selectSuggestion(String suggestion) {
-    _controller.text = suggestion;
+    setState(() {
+      _controller.text = suggestion;
+    });
     _focusNode.unfocus();
   }
 

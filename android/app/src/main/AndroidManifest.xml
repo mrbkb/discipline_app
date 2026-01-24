@@ -1,18 +1,49 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Permissions -->
+    
+    <!-- ============================================ -->
+    <!-- PERMISSIONS -->
+    <!-- ============================================ -->
+    
+    <!-- Internet - Required for Firebase sync and cloud backup -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    
+    <!-- Vibration - For haptic feedback on habit completion -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    
+    <!-- Boot Complete - To reschedule alarms after device restart -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    
+    <!-- Notifications - Required for daily habit reminders (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    
+    <!-- Exact Alarms - Required for precise notification timing (Android 12+) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    
+    <!-- Wake Lock - To ensure alarms fire even in deep sleep -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    
+    <!-- Foreground Service - For background alarm processing -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    
+    <!-- ============================================ -->
+    <!-- APPLICATION -->
+    <!-- ============================================ -->
     
     <application
         android:label="Discipline"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:usesCleartextTraffic="false"
+        android:hardwareAccelerated="true"
+        android:largeHeap="true">
+        
+        <!-- ============================================ -->
+        <!-- MAIN ACTIVITY -->
+        <!-- ============================================ -->
         
         <activity
             android:name=".MainActivity"
@@ -25,38 +56,101 @@
             android:showWhenLocked="true"
             android:turnScreenOn="true">
             
+            <!-- Normal theme after splash -->
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme" />
-              
+            
+            <!-- App launcher intent -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            
+            <!-- Deep links (optionnel, pour futures fonctionnalités) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Décommente si tu veux des deep links
+                <data 
+                    android:scheme="https"
+                    android:host="discipline.app" />
+                -->
+            </intent-filter>
         </activity>
-        <!-- ✅ Service pour android_alarm_manager_plus -->
-    <service
-        android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmService"
-        android:permission="android.permission.BIND_JOB_SERVICE"
-        android:exported="false"/>
-    
-    <receiver
-        android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmBroadcastReceiver"
-        android:exported="false"/>
-    
-    <receiver
-        android:name="dev.fluttercommunity.plus.androidalarmmanager.RebootBroadcastReceiver"
-        android:enabled="true"
-        android:exported="false">
-        <intent-filter>
-            <action android:name="android.intent.action.BOOT_COMPLETED"/>
-        </intent-filter>
-    </receiver>
         
+        <!-- ============================================ -->
+        <!-- ANDROID ALARM MANAGER (Notifications exactes) -->
+        <!-- ============================================ -->
         
+        <!-- Service principal pour les alarmes -->
+        <service
+            android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false"
+            android:enabled="true"/>
         
+        <!-- Receiver pour les alarmes programmées -->
+        <receiver
+            android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmBroadcastReceiver"
+            android:exported="false"
+            android:enabled="true"/>
+        
+        <!-- Receiver pour restaurer les alarmes après redémarrage -->
+        <receiver
+            android:name="dev.fluttercommunity.plus.androidalarmmanager.RebootBroadcastReceiver"
+            android:enabled="true"
+            android:exported="false"
+            android:directBootAware="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <!-- HTC specific -->
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+        
+        <!-- ============================================ -->
+        <!-- FLUTTER & FIREBASE -->
+        <!-- ============================================ -->
+        
+        <!-- Flutter embedding version -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        
+        <!-- Firebase Cloud Messaging (si tu l'utilises plus tard) -->
+        <!-- Décommente si besoin
+        <service
+            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        -->
+        
+        
     </application>
+    
+    <!-- ============================================ -->
+    <!-- QUERIES (Android 11+ Package Visibility) -->
+    <!-- ============================================ -->
+    
+    <queries>
+        <!-- Pour ouvrir des URLs (privacy policy, etc.) -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        
+        <!-- Pour partager du contenu -->
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="*/*" />
+        </intent>
+    </queries>
+    
 </manifest>

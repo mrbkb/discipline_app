@@ -46,6 +46,9 @@ dependencies:
   intl: ^0.19.0
   shared_preferences: ^2.3.3
   connectivity_plus: ^6.1.2
+  change_app_package_name: ^1.5.0
+
+  
 
 dev_dependencies:
   flutter_test:
@@ -57,6 +60,8 @@ dev_dependencies:
 
   # Linting
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
+
 
 flutter:
   uses-material-design: true
@@ -88,30 +93,3 @@ flutter:
           weight: 600
 
 
-# ============================================
-# INSTRUCTIONS POST-INSTALLATION
-# ============================================
-#
-# 1. Téléchargez les fonts Montserrat & Poppins de Google Fonts
-#    https://fonts.google.com/specimen/Montserrat
-#    https://fonts.google.com/specimen/Poppins
-#
-#    Créez le dossier : fonts/
-#    Placez-y les fichiers .ttf
-#
-# 2. (Optionnel) Assets animations Lottie
-#    Créez : assets/animations/
-#    Téléchargez des animations de https://lottiefiles.com
-#    - flame.json (animation de flamme)
-#    - confetti.json (célébration)
-#    - splash.json (écran de démarrage)
-#
-# 3. Lancez la génération des adapters Hive :
-#    flutter pub get
-#    flutter pub run build_runner build --delete-conflicting-outputs
-#
-# 4. Configuration Firebase (voir instructions séparées)
-#
-# 5. Pour résoudre l'erreur de desugaring, voir android/app/build.gradle
-#
-# ============================================

@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
-import '../../../core/services/auto_sync_service.dart';
+//import '../../../core/services/auto_sync_service.dart';
 import '../../providers/stats_provider.dart';
 import '../../providers/user_provider.dart';
-import '../../providers/sync_provider.dart';
+//import '../../providers/sync_provider.dart';
 //import '../../widgets/alarm_notification_debug_widget.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -19,7 +19,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(userProvider);
-    final isOnline = ref.watch(isOnlineProvider);
+    //final isOnline = ref.watch(isOnlineProvider);
     final totalActiveDays = ref.watch(totalActiveDaysProvider);
 
     if (user == null) {
@@ -262,7 +262,7 @@ const SliverToBoxAdapter(child: SizedBox(height: 24)),
   child: AlarmNotificationDebugWidget(),
 ),
 */
-const SliverToBoxAdapter(child: SizedBox(height: 100)),
+//const SliverToBoxAdapter(child: SizedBox(height: 100)),
 
           // About Items
           SliverToBoxAdapter(
@@ -487,7 +487,7 @@ class _SettingsTile extends StatelessWidget {
 }
 
 // ✅ NOUVEAU: Widget de statut Auto-Sync
-class _AutoSyncStatusCard extends StatelessWidget {
+/*class _AutoSyncStatusCard extends StatelessWidget {
   final bool isOnline;
   final dynamic user;
 
@@ -616,4 +616,4 @@ class _AutoSyncStatusCard extends StatelessWidget {
       return 'Inconnue';
     }
   }
-}
+}*/

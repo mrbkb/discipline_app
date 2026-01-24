@@ -103,7 +103,7 @@ class UserNotifier extends StateNotifier<UserModel?> {
         await _autoSyncAfterConnection();
       }
     } catch (e, stack) {
-      LoggerService.warning('Firebase connection failed (will retry later)', tag: 'USER', error: e);
+      LoggerService.warning('Firebase connection failed (will retry later)', tag: 'USER', error: e, );
     }
   }
   

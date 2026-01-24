@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    Backup rules for Android Auto Backup (Android 6.0+)
+    Defines what data should be backed up to Google Drive
+-->
+<full-backup-content>
+    <!-- Include shared preferences (user settings) -->
+    <include domain="sharedpref" path="."/>
+    
+    <!-- Include Hive database (local habits data) -->
+    <include domain="database" path="."/>
+    
+    <!-- Exclude temporary files -->
+    <exclude domain="file" path="cache/"/>
+    
+    <!-- Exclude Firebase data (already synced) -->
+    <exclude domain="sharedpref" path="FlutterSecureStorage"/>
+</full-backup-content>

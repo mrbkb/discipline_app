@@ -1,6 +1,6 @@
 // ============================================
 // FICHIER MIS À JOUR : lib/presentation/screens/onboarding/notification_permission_screen.dart
-// ✅ Utilise AlarmNotificationService au lieu de NotificationService
+// ✅ PRODUCTION: Notification de test retirée
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,10 +60,11 @@ class _NotificationPermissionScreenState
         return;
       }
       
-      // 2. Tester une notification immédiate
-      await AlarmNotificationService.testNotification();
+      // ✅ PRODUCTION: Pas de notification de test
+      // La ligne suivante a été RETIRÉE :
+      // await AlarmNotificationService.testNotification();
       
-      // 3. Programmer les notifications quotidiennes depuis UserModel
+      // 2. Programmer les notifications quotidiennes depuis UserModel
       final user = ref.read(userProvider);
       
       if (user != null) {
@@ -96,16 +97,16 @@ class _NotificationPermissionScreenState
         _isLoading = false;
       });
       
-      // 4. Analytics
+      // 3. Analytics
       await AnalyticsService.logEvent(
         name: 'notifications_enabled',
         parameters: {'source': 'onboarding'},
       );
       
-      // 5. Attendre 2 secondes pour que l'utilisateur voie le succès
+      // 4. Attendre 2 secondes pour que l'utilisateur voie le succès
       await Future.delayed(const Duration(seconds: 2));
       
-      // 6. Aller à l'écran principal
+      // 5. Aller à l'écran principal
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const HomeScreen()),

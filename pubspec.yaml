@@ -1,6 +1,7 @@
 # ============================================
-# FICHIER : pubspec.yaml
+# FICHIER COMPLET : pubspec.yaml
 # DISCIPLINE - Gestionnaire d'Habitudes MVP
+# ✅ Avec générateur d'icônes configuré
 # ============================================
 
 name: discipline
@@ -48,8 +49,6 @@ dependencies:
   connectivity_plus: ^6.1.2
   change_app_package_name: ^1.5.0
 
-  
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -60,13 +59,43 @@ dev_dependencies:
 
   # Linting
   flutter_lints: ^4.0.0
-  flutter_launcher_icons: ^0.14.4
+  
+  # Icon Generator
+  flutter_launcher_icons: ^0.14.1
 
+# ============================================
+# CONFIGURATION DES ICÔNES
+# ============================================
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  
+  # Configuration Android adaptative (fond + foreground)
+  adaptive_icon_background: "#000000"  # Fond noir
+  adaptive_icon_foreground: "assets/icons/app_icon.png"
+  
+  # Configuration Android legacy (pour anciennes versions)
+  android_min_sdk_android: 21
+  
+  # Configuration iOS
+  ios_min_sdk_ios: 13
+  
+  # Optionnel : Désactiver certaines plateformes
+  # android: false
+  # ios: false
+  
+  # Optionnel : Image différente par plateforme
+  # image_path_android: "assets/images/icon_android.png"
+  # image_path_ios: "assets/images/icon_ios.png"
+  
+  # Optionnel : Supprimer les anciennes icônes avant génération
+  remove_alpha_ios: true
 
 flutter:
   uses-material-design: true
 
-  #Assets
+  # Assets
   assets:
     - assets/animations/
     - assets/images/
@@ -91,5 +120,3 @@ flutter:
           weight: 500
         - asset: assets/fonts/Poppins-SemiBold.ttf
           weight: 600
-
-

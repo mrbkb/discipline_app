@@ -1,7 +1,6 @@
-
-
 // ============================================
-// FICHIER 27/30 : lib/presentation/screens/onboarding/welcome_screen.dart
+// FICHIER MIS À JOUR : lib/presentation/screens/onboarding/welcome_screen.dart
+// ✅ Sans badge "Ndjoka", design plus épuré
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,7 +25,7 @@ class WelcomeScreen extends ConsumerWidget {
             children: [
               const Spacer(),
               
-              // Flame emoji
+              // Flame emoji avec animation
               TweenAnimationBuilder<double>(
                 duration: const Duration(milliseconds: 1000),
                 tween: Tween(begin: 0.0, end: 1.0),
@@ -43,7 +42,7 @@ class WelcomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 32),
               
-              // Title
+              // App Title avec gradient
               ShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
                   colors: [
@@ -61,38 +60,62 @@ class WelcomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               
-              // Subtitle
+              // Slogan principal
               Text(
                 AppStrings.onboardingSubtitle,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: AppColors.textSecondary,
                   height: 1.5,
+                  fontSize: 18, // Légèrement plus grand
+                  fontWeight: FontWeight.w600, // Plus bold
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 24),
               
-              // Additional tagline
+              // ✅ OPTIONNEL : Tagline descriptif (remplace l'ancien badge)
+              // Décommentez si vous voulez ajouter une ligne explicative
+              /*
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+                  horizontal: 20,
+                  vertical: 12,
                 ),
                 decoration: BoxDecoration(
                   color: AppColors.lavaOrange.withValues(alpha:0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: AppColors.lavaOrange.withValues(alpha:.3),
-                    width: 1,
+                    color: AppColors.lavaOrange.withValues(alpha:.25),
+                    width: 1.5,
                   ),
                 ),
                 child: Text(
-                  'La psychologie du "Ndjoka"',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  AppStrings.onboardingTagline,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.lavaOrange,
                     fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
+              ),
+              */
+              
+              // ✅ ALTERNATIVE : Liste de points clés (plus moderne)
+              const SizedBox(height: 8),
+              const _FeatureItem(
+                icon: Icons.local_fire_department,
+                text: 'Système de flamme motivant',
+              ),
+              const SizedBox(height: 12),
+              const _FeatureItem(
+                icon: Icons.notifications_active,
+                text: 'Rappels sans pitié',
+              ),
+              const SizedBox(height: 12),
+              const _FeatureItem(
+                icon: Icons.trending_up,
+                text: 'Progrès visibles jour après jour',
               ),
               
               const Spacer(),
@@ -141,6 +164,40 @@ class WelcomeScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ✅ NOUVEAU : Widget pour les points clés
+class _FeatureItem extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _FeatureItem({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          icon,
+          color: AppColors.lavaOrange,
+          size: 20,
+        ),
+        const SizedBox(width: 12),
+        Text(
+          text,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }

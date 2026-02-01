@@ -1,10 +1,11 @@
 // ============================================
-// FICHIER 30/30 : lib/presentation/screens/home/home_screen.dart
-// ✅ FIX: Limite 5 habitudes respectée + UI propre
+// FICHIER CORRIGÉ : lib/presentation/screens/home/home_screen.dart
+// ✅ Compatible avec emoji_picker_flutter 3.x
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vibration/vibration.dart';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../providers/habits_provider.dart';
@@ -159,8 +160,8 @@ class _HomeContent extends ConsumerWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Menu button (placeholder for future drawer)
-                  Container(
+                  // Menu button
+                  /*Container(
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
@@ -169,11 +170,9 @@ class _HomeContent extends ConsumerWidget {
                     ),
                     child: IconButton(
                       icon: const Icon(Icons.menu_rounded),
-                      onPressed: () {
-                        // TODO: Open drawer with archived habits, etc.
-                      },
+                      onPressed: () {},
                     ),
-                  ),
+                  ),*/
                   
                   // User nickname
                   Container(
@@ -304,7 +303,6 @@ class _HomeContent extends ConsumerWidget {
             ),
           ),
           
-          // Bottom spacing
           const SliverToBoxAdapter(
             child: SizedBox(height: 24),
           ),
@@ -313,9 +311,7 @@ class _HomeContent extends ConsumerWidget {
     );
   }
 
-  // ✅ FIX: Vérification de la limite 5 AVANT d'ouvrir le dialog
   void _showAddHabitDialog(BuildContext context, WidgetRef ref) {
-    // ✅ Check limit FIRST
     final currentHabitsCount = ref.read(activeHabitsProvider).length;
     
     if (currentHabitsCount >= 5) {
@@ -326,7 +322,7 @@ class _HomeContent extends ConsumerWidget {
           duration: Duration(seconds: 3),
         ),
       );
-      return; // ✅ Stop here
+      return;
     }
     
     final controller = TextEditingController();
@@ -347,7 +343,7 @@ class _HomeContent extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 🏷 Title
+                  // Title
                   const Text(
                     'Nouvelle habitude',
                     style: TextStyle(
@@ -358,44 +354,61 @@ class _HomeContent extends ConsumerWidget {
 
                   const SizedBox(height: 20),
 
-                  // 😃 Emoji selector (ANTI OVERFLOW)
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    alignment: WrapAlignment.center,
-                    children: ['✨', '💪', '📚', '🧘', '💧', '🎯'].map((emoji) {
-                      return InkWell(
-                        onTap: () {
-                          setState(() => selectedEmoji = emoji);
-                          Vibration.vibrate(duration: 30);
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: selectedEmoji == emoji
-                                ? AppColors.lavaOrange.withValues(alpha: 0.2)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: selectedEmoji == emoji
-                                  ? AppColors.lavaOrange
-                                  : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                          child: Text(
-                            emoji,
-                            style: const TextStyle(fontSize: 28),
-                          ),
+                  // ✅ Emoji sélectionné
+                  InkWell(
+                    onTap: () {
+                      _showEmojiPicker(context, (emoji) {
+                        setState(() {
+                          selectedEmoji = emoji;
+                        });
+                        Navigator.of(context).pop();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.lavaOrange.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.lavaOrange.withValues(alpha: 0.3),
+                          width: 2,
                         ),
-                      );
-                    }).toList(),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            selectedEmoji,
+                            style: const TextStyle(fontSize: 64),
+                          ),
+                          const SizedBox(height: 8),
+                          const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.edit,
+                                size: 16,
+                                color: AppColors.lavaOrange,
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'Changer l\'emoji',
+                                style: TextStyle(
+                                  color: AppColors.lavaOrange,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
 
                   const SizedBox(height: 20),
 
-                  // ✏️ Title input
+                  // Title input
                   TextField(
                     controller: controller,
                     autofocus: true,
@@ -410,7 +423,7 @@ class _HomeContent extends ConsumerWidget {
 
                   const SizedBox(height: 24),
 
-                  // 🎯 Actions
+                  // Actions
                   Row(
                     children: [
                       Expanded(
@@ -452,6 +465,86 @@ class _HomeContent extends ConsumerWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  // ✅ CORRIGÉ : Configuration compatible avec emoji_picker_flutter 3.x
+  void _showEmojiPicker(BuildContext context, Function(String) onEmojiSelected) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        height: 400,
+        padding: const EdgeInsets.only(top: 16),
+        child: Column(
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textTertiary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            
+            // Title
+            const Text(
+              'Choisis un emoji',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // ✅ Emoji Picker CORRIGÉ
+            Expanded(
+              child: EmojiPicker(
+                onEmojiSelected: (category, emoji) {
+                  onEmojiSelected(emoji.emoji);
+                  Vibration.vibrate(duration: 30);
+                },
+                config: const Config(
+                  height: 256,
+                  checkPlatformCompatibility: true,
+                  emojiViewConfig: EmojiViewConfig(
+                    emojiSizeMax: 28,
+                    verticalSpacing: 0,
+                    horizontalSpacing: 0,
+                    gridPadding: EdgeInsets.zero,
+                    backgroundColor: AppColors.cardBackground,
+                    buttonMode: ButtonMode.MATERIAL,
+                    columns: 7,
+                    replaceEmojiOnLimitExceed: false,
+                  ),
+                  categoryViewConfig: CategoryViewConfig(
+                    indicatorColor: AppColors.lavaOrange,
+                    iconColor: AppColors.textSecondary,
+                    iconColorSelected: AppColors.lavaOrange,
+                    backspaceColor: AppColors.lavaOrange,
+                    backgroundColor: AppColors.cardBackground,
+                  ),
+                  bottomActionBarConfig: BottomActionBarConfig(
+                    backgroundColor: AppColors.cardBackground,
+                    buttonColor: AppColors.cardBackground,
+                    buttonIconColor: AppColors.lavaOrange,
+                    showSearchViewButton: false,
+                  ),
+                  searchViewConfig: SearchViewConfig(
+                    backgroundColor: AppColors.cardBackground,
+                    buttonIconColor: AppColors.lavaOrange,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,5 +1,6 @@
 // ============================================
 // FICHIER CORRIGÉ : lib/presentation/screens/splash/splash_screen.dart
+// ✅ FIX: Navigation qui ne bloque plus
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:lottie/lottie.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../../core/services/logger_service.dart';
 import '../../providers/user_provider.dart';
 import '../onboarding/welcome_screen.dart';
 import '../home/home_screen.dart';
@@ -23,10 +25,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  
+  bool _hasNavigated = false;
 
   @override
   void initState() {
     super.initState();
+    
+    LoggerService.info('SplashScreen initState', tag: 'SPLASH');
     
     // Setup animations
     _animationController = AnimationController(
@@ -58,23 +64,72 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _initializeAndNavigate() async {
-    // Wait for animation to complete
-    await Future.delayed(const Duration(milliseconds: 2000));
-    
-    if (!mounted) return;
-    
-    // ✅ FIX: Read provider AFTER mounted check
-    final isOnboardingCompleted = ref.read(isOnboardingCompletedProvider);
-    
-    // Navigate to appropriate screen
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => isOnboardingCompleted 
-              ? const HomeScreen() 
-              : const WelcomeScreen(),
-        ),
-      );
+    try {
+      LoggerService.info('Starting initialization', tag: 'SPLASH');
+      
+      // Wait for animation to complete
+      await Future.delayed(const Duration(milliseconds: 2000));
+      
+      if (!mounted || _hasNavigated) {
+        LoggerService.warning('Not mounted or already navigated', tag: 'SPLASH');
+        return;
+      }
+      
+      LoggerService.info('Reading onboarding status', tag: 'SPLASH');
+      
+      // ✅ FIX CRITIQUE: Utiliser watch au lieu de read
+      // et vérifier si le user existe d'abord
+      final userRepo = ref.read(userRepositoryProvider);
+      final userExists = userRepo.userExists();
+      
+      LoggerService.info('User exists: $userExists', tag: 'SPLASH', data: {
+        'userExists': userExists,
+      });
+      
+      bool shouldShowOnboarding = true;
+      
+      if (userExists) {
+        final user = userRepo.getUser();
+        shouldShowOnboarding = user?.onboardingCompleted != true;
+        
+        LoggerService.info('User found', tag: 'SPLASH', data: {
+          'nickname': user?.nickname,
+          'onboardingCompleted': user?.onboardingCompleted,
+          'shouldShowOnboarding': shouldShowOnboarding,
+        });
+      } else {
+        LoggerService.info('No user found - showing onboarding', tag: 'SPLASH');
+      }
+      
+      // Navigate to appropriate screen
+      if (mounted && !_hasNavigated) {
+        _hasNavigated = true;
+        
+        LoggerService.info('Navigating to ${shouldShowOnboarding ? 'Onboarding' : 'Home'}', tag: 'SPLASH');
+        
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => shouldShowOnboarding 
+                ? const WelcomeScreen() 
+                : const HomeScreen(),
+          ),
+        );
+      }
+      
+    } catch (e, stack) {
+      LoggerService.error('Initialization error', tag: 'SPLASH', error: e, stackTrace: stack);
+      
+      // ✅ FALLBACK: En cas d'erreur, aller au welcome screen
+      if (mounted && !_hasNavigated) {
+        _hasNavigated = true;
+        LoggerService.warning('Error during init - navigating to Welcome screen', tag: 'SPLASH');
+        
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const WelcomeScreen(),
+          ),
+        );
+      }
     }
   }
 
@@ -108,6 +163,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         repeat: true,
                         // ✅ FIX: Fallback si fichier manquant
                         errorBuilder: (context, error, stackTrace) {
+                          LoggerService.warning('Lottie animation not found', tag: 'SPLASH');
                           return const Text('🔥', style: TextStyle(fontSize: 120));
                         },
                       ),

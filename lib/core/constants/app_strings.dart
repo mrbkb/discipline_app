@@ -1,16 +1,59 @@
-
-
 // ============================================
-// FICHIER 3/30 : lib/core/constants/app_strings.dart
+// FICHIER MIS À JOUR : lib/core/constants/app_strings.dart
+// ✅ Plusieurs options de slogans disponibles
 // ============================================
 class AppStrings {
   // App
   static const String appName = 'Discipline';
   
-  // Onboarding
+  // ============================================
+  // ONBOARDING - SLOGANS DISPONIBLES
+  // ============================================
+  
+  // Onboarding Title
   static const String onboardingTitle = 'DISCIPLINE';
-  static const String onboardingSubtitle = 'Transforme tes résolutions\nen automatismes';
+  
+  // ✅ OPTION 1 : Psychologie comportementale (RECOMMANDÉ)
+  //static const String onboardingSubtitle = 'La psychologie de la perte';
+  
+  // ✅ OPTION 2 : Approche directe/brutale
+   static const String onboardingSubtitle = 'Pas de pitié pour tes excuses';
+  
+  // ✅ OPTION 3 : Résultats/Transformation
+  // static const String onboardingSubtitle = 'Automatise ta réussite';
+  
+  // ✅ OPTION 4 : Stratégique
+  // static const String onboardingSubtitle = 'La stratégie anti-abandon';
+  
+  // ✅ OPTION 5 : Challenge
+  // static const String onboardingSubtitle = 'Ton adversaire, c\'est hier';
+  
+  // ✅ OPTION 6 : Promesse
+  // static const String onboardingSubtitle = 'Des habitudes qui tiennent';
+  
+  // ✅ OPTION 7 : Métaphore du feu
+  // static const String onboardingSubtitle = 'La méthode du feu qui dure';
+  
+  // ✅ OPTION 8 : Valeur morale
+  // static const String onboardingSubtitle = 'L\'art de tenir sa parole';
+  
   static const String onboardingButton = 'Commencer';
+  
+  // ============================================
+  // ONBOARDING - TAGLINE OPTIONNEL
+  // ============================================
+  
+  // Badge ou tagline à afficher sous le slogan principal
+  static const String onboardingTagline = 'Transforme tes résolutions en automatismes';
+  
+  // Alternatives :
+  // static const String onboardingTagline = 'Sans compromis, sans excuses';
+  // static const String onboardingTagline = 'Méthode scientifique prouvée';
+  // static const String onboardingTagline = 'Le feu qui ne s\'éteint jamais';
+  
+  // ============================================
+  // RESTE DU CODE INCHANGÉ
+  // ============================================
   
   static const String nicknameTitle = 'Comment on t\'appelle ?';
   static const String nicknameHint = 'Champion';
@@ -61,7 +104,7 @@ class AppStrings {
   
   static const List<String> flameMessagesLow = [
     'Le feu est presque éteint 😰',
-    'Ekié, c\'est quoi ça ?',
+    'C\'est quoi ça ?',
     'On se réveille ou bien ?',
   ];
 }

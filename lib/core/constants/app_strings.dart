@@ -72,7 +72,7 @@ class AppStrings {
   
   // Stats
   static const String statsTitle = 'Statistiques';
-  static const String statsPerformance = 'Performance 7 Derniers Jours';
+  static const String statsPerformance = 'Les 7 Derniers Jours';
   static const String statsRecords = 'Records Personnels';
   static const String statsSuccessRate = 'Taux de réussite:';
   static const String statsBestFlame = 'Meilleure Flamme:';

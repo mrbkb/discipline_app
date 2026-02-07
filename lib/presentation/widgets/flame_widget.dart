@@ -1,6 +1,6 @@
 // ============================================
 // FICHIER OPTIMISÉ : lib/presentation/widgets/flame_widget.dart
-// ✅ Mise à jour INSTANTANÉE quand on coche/décoche
+// ✅ Taille initiale réduite + moins d'espacement
 // ============================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,7 +47,8 @@ class _FlameWidgetState extends ConsumerState<FlameWidget>
     final flamePercentage = ref.watch(flamePercentageProvider);
 
     return Container(
-      height: 250,
+      height: 210,
+      // ✅ FIX: Réduire la hauteur (210 au lieu de 250)
       margin: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -81,8 +82,9 @@ class _FlameWidgetState extends ConsumerState<FlameWidget>
                           // ✅ Glow dynamique basé sur le niveau
                           AnimatedContainer(
                             duration: const Duration(milliseconds: 500),
-                            width: 100 + (flameLevel * 50),
-                            height: 100 + (flameLevel * 50),
+                            // ✅ FIX: Taille initiale plus petite (80 au lieu de 100)
+                            width: 80 + (flameLevel * 40),
+                            height: 80 + (flameLevel * 40),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: RadialGradient(
@@ -101,7 +103,8 @@ class _FlameWidgetState extends ConsumerState<FlameWidget>
                             child: AnimatedDefaultTextStyle(
                               duration: const Duration(milliseconds: 300),
                               style: TextStyle(
-                                fontSize: 80 + (flameLevel * 40),
+                                // ✅ FIX: Taille initiale plus petite (60 au lieu de 80)
+                                fontSize: 60 + (flameLevel * 28),
                               ),
                               child: const Text('🔥'),
                             ),
@@ -111,7 +114,8 @@ class _FlameWidgetState extends ConsumerState<FlameWidget>
                     },
                   ),
 
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 3),
+                  // ✅ FIX: Espacement minimal (3 au lieu de 6)
 
                   // 🔢 Percentage avec animation de changement
                   AnimatedSwitcher(
@@ -130,14 +134,16 @@ class _FlameWidgetState extends ConsumerState<FlameWidget>
                       key: ValueKey<int>(flamePercentage),
                       style: TextStyle(
                         fontFamily: 'Montserrat',
-                        fontSize: 48,
+                        // ✅ FIX: Taille réduite (38 au lieu de 48)
+                        fontSize: 38,
                         fontWeight: FontWeight.w800,
                         color: _getFlameColor(flameLevel),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 1),
+                  // ✅ FIX: Espacement minimal (1 au lieu de 4)
 
                   // 🏷 Label
                   const Padding(
@@ -145,25 +151,29 @@ class _FlameWidgetState extends ConsumerState<FlameWidget>
                     child: Text(
                       'Niveau de discipline',
                       textAlign: TextAlign.center,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 14,
+                        // ✅ FIX: Taille réduite (11 au lieu de 14)
+                        fontSize: 11,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
+                  // ✅ FIX: Espacement réduit (8 au lieu de 16)
 
                   // 📊 Progress bar avec animation fluide
                   Container(
-                    width: 200,
-                    height: 8,
+                    width: 170,
+                    // ✅ FIX: Largeur réduite (170 au lieu de 200)
+                    height: 5,
+                    // ✅ FIX: Hauteur réduite (5 au lieu de 8)
                     decoration: BoxDecoration(
                       color: AppColors.deadGray,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(2.5),
                     ),
                     child: AnimatedFractionallySizedBox(
                       duration: const Duration(milliseconds: 500),
@@ -179,13 +189,13 @@ class _FlameWidgetState extends ConsumerState<FlameWidget>
                                   .withValues(alpha: 0.7),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(2.5),
                           boxShadow: [
                             BoxShadow(
                               color: _getFlameColor(flameLevel)
                                   .withValues(alpha: 0.3),
-                              blurRadius: 4,
-                              spreadRadius: 1,
+                              blurRadius: 3,
+                              spreadRadius: 0.5,
                             ),
                           ],
                         ),

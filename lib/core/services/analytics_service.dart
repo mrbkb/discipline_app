@@ -1,5 +1,6 @@
 // ============================================
-// FICHIER CORRIGÉ : lib/core/services/analytics_service.dart
+// FICHIER CORRIGÉ FINAL : lib/core/services/analytics_service.dart
+// ✅ TOUS les paramètres boolean convertis en string pour Firebase Analytics
 // ============================================
 import 'package:firebase_analytics/firebase_analytics.dart';
 
@@ -145,7 +146,6 @@ class AnalyticsService {
   
   // ========== CUSTOM EVENTS ==========
   
-  /// Log when user creates a new habit
   static Future<void> logHabitCreated({
     required String habitTitle,
     bool hasEmoji = false,
@@ -154,7 +154,7 @@ class AnalyticsService {
       name: 'habit_created',
       parameters: {
         'habit_title': habitTitle,
-        'has_emoji': hasEmoji ? 1 : 0,
+        'has_emoji': hasEmoji ? 'true' : 'false', 
       },
     );
   }

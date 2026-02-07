@@ -1,6 +1,6 @@
 // ============================================
-// FICHIER MIS À JOUR : lib/presentation/providers/habits_provider.dart
-// ✅ Utilise AlarmNotificationService au lieu de NotificationService
+// FICHIER CORRIGÉ : lib/presentation/providers/habits_provider.dart
+// ✅ FIX: Conversion boolean → string pour Firebase Analytics
 // ============================================
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -102,11 +102,12 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
     await _userRepository.incrementHabitsCreated();
     LoggerService.debug('Habit counter incremented', tag: 'HABITS');
     
+    // ✅ FIX CRITIQUE: Convertir le boolean en string pour Firebase Analytics
     await AnalyticsService.logEvent(
       name: 'habit_created',
       parameters: {
         'habit_title': title,
-        'has_emoji': emoji != null,
+        'has_emoji': emoji != null ? 'true' : 'false', // ✅ FIX: STRING au lieu de bool
       },
     );
     
@@ -132,7 +133,6 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
   
   // ========== UPDATE ==========
   
-  /// ✅ MODIFIÉ : Utilise AlarmNotificationService
   Future<void> completeHabit(String id) async {
     await _repository.completeHabit(id);
     _loadHabits();
@@ -151,7 +151,6 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
       hour: DateTime.now().hour,
     );
     
-    // ✅ CHANGEMENT : Utilise AlarmNotificationService pour les milestones
     if ([7, 14, 21, 30, 60, 90].contains(habit.currentStreak)) {
       await AlarmNotificationService.showStreakMilestone(
         habit.title,
@@ -251,7 +250,6 @@ class HabitsNotifier extends StateNotifier<List<HabitModel>> {
     LoggerService.info('Day validated', tag: 'HABITS');
   }
   
-  /// ✅ MODIFIÉ : Utilise AlarmNotificationService pour les streaks perdus
   Future<void> performMidnightReset() async {
     // Récupérer les habitudes avant le reset pour détecter les streaks perdus
     final habitsBeforeReset = _repository.getActiveHabits();
